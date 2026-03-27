@@ -3,3 +3,28 @@
   padding: 0;
   box-sizing: border-box;
 }
+
+body{
+  background-color: rgba(2, 109, 186, 0.25);
+}
+
+:root {
+  --color-bg-main: #0f1117;
+  --color-bg-secondary: #080a0f;
+  --color-bg-hover: #1a1f2e;
+  --color-bg-hover-alt: #1e1a2e;
+
+  --color-border: #1e2130;
+  --color-border-light: #2a3050;
+
+  --color-text-main: #0c0a0a;
+  --color-text-secondary: #c8d0e8;
+  --color-text-muted: #5a6480;
+
+  --color-primary: #4f8ef7;
+  --color-primary-hover: #3a7de0;
+
+  --color-danger: #e05c6a;
+  --color-success: #4ade80;
+  --color-admin: #a06fd8;
+}

@@ -79,14 +79,14 @@ model ChatMember {
 
 model Message {
   id        String   @id @default(uuid(4))
-  text      String
+  text      String   // зашифровано для получателя
+  senderText String? // зашифровано для отправителя
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   isRead    Boolean  @default(false)
 
-  chatId String
-  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
-
+  chatId   String
+  chat     Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
   senderId String
   sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 

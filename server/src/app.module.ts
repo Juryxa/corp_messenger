@@ -9,6 +9,7 @@ import {CallModule} from './call/call.module';
 import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
 import {APP_GUARD} from "@nestjs/core";
 import {UsersModule} from './users/users.module';
+import { SessionModule } from './session/session.module';
 
 @Module({
 	imports: [
@@ -31,7 +32,8 @@ import {UsersModule} from './users/users.module';
 		AuthModule,
 		ChatModule,
 		CallModule,
-		UsersModule
+		UsersModule,
+		SessionModule
 	],
 	controllers: [AppController],
 	providers: [AppService, {

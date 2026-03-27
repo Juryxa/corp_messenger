@@ -2,6 +2,9 @@ import {useEffect, useState} from 'react';
 import styles from './SessionsPage.module.css';
 import AuthService from "../../services/AuthService";
 import type {ISession} from "../../models/ISession";
+import $api from "../../http";
+import {store} from "../../main";
+import type {IUser} from "../../models/IUser";
 
 function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
@@ -54,11 +57,20 @@ export function SessionsPage() {
         fetchSessions();
     }, []);
 
-    const handleDelete = async (sessionId: string) => {
-        setDeletingId(sessionId);
+    const handleDelete = async (session: ISession) => {
+        setDeletingId(session.id);
         try {
-            await AuthService.deleteSession(sessionId);
-            setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+            await $api.delete(`/auth/sessions/${session.id}`);
+
+            if (session.isCurrent) {
+                // Удаляем текущую сессию — разлогиниваем
+                localStorage.removeItem('token');
+                store.setAuth(false);
+                store.setUser({} as IUser);
+                return; // App.tsx сам редиректнет на /login
+            }
+
+            setSessions((prev) => prev.filter((s) => s.id !== session.id));
         } catch (e) {
             console.error(e);
         } finally {
@@ -143,12 +155,12 @@ export function SessionsPage() {
                                 </div>
                             </div>
 
-                            {!session.isCurrent && (
+                             (
                                 <button
-                                    className={styles.deleteBtn}
-                                    onClick={() => handleDelete(session.id)}
+                                    className={`${styles.deleteBtn} ${session.isCurrent ? styles.deleteBtnCurrent : ''}`}
+                                    onClick={() => handleDelete(session)}
                                     disabled={deletingId === session.id}
-                                    title="Завершить сессию"
+                                    title={session.isCurrent ? 'Выйти на этом устройстве' : 'Завершить сессию'}
                                 >
                                     {deletingId === session.id ? (
                                         <div className={styles.spinnerSmall} />
@@ -159,7 +171,7 @@ export function SessionsPage() {
                                         </svg>
                                     )}
                                 </button>
-                            )}
+                            )
                         </div>
                     ))}
 

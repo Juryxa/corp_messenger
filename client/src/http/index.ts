@@ -4,6 +4,7 @@ import type {AuthResponse} from "../models/response/AuthResponse";
 
 
 export const API_URL = `http://localhost:5000/api`
+export const SOCKET_URL = `http://localhost:5000`;
 export const API_AUTH_SERVICE = `/auth`
 export const API_CHAT_SERVICE = `/chat`
 export const API_USERS_SERVICE = `/users`
@@ -34,6 +35,8 @@ $api.interceptors.response.use((config) => {
             localStorage.setItem('token', response.data.accessToken);
             return $api.request(originalRequest);
         } catch (e) {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
             const error = e as AxiosError<{ message: string }>;
             console.error(error.response?.data?.message)
         }

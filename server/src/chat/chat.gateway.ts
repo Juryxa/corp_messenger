@@ -86,24 +86,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     ) {
         const userId = socket.data.userId as string;
 
-        // Проверяем что юзер состоит в чате
         const chat = await this.chatService.getChat(dto.chatId, userId).catch(() => {
             throw new WsException('Нет доступа к чату');
         });
 
-        // Для канала — только owner/admin могут писать
         if (chat.type === 'channel') {
             const member = chat.members.find((m) => m.userId === userId);
-            if (!member || !['owner', 'admin'].includes(member.role)) {
+            if (!member || !['owner', 'admin'].includes(member.role)) { // owner уже есть
                 throw new WsException('Недостаточно прав для отправки сообщений');
             }
         }
 
-        const message = await this.chatService.createMessage(dto.chatId, userId, dto.text);
 
-        // Отправляем всем участникам комнаты
+        const message = await this.chatService.createMessage(
+            dto.chatId,
+            userId,
+            dto.text,
+            dto.senderText,
+        );
+
         this.server.to(dto.chatId).emit('newMessage', message);
-
         return message;
     }
 

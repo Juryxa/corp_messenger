@@ -10,7 +10,7 @@ export interface IChatMemberUser {
 
 export interface IChatMember {
     userId: string;
-    role: ChatMemberRole | string;
+    role: ChatMemberRole;
     user: IChatMemberUser;
 }
 

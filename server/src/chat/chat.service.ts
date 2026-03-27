@@ -26,6 +26,7 @@ export class ChatService {
                                 name: true,
                                 surname: true,
                                 employee_Id: true,
+                                publicKey: true,
                             },
                         },
                     },
@@ -57,6 +58,7 @@ export class ChatService {
                                 name: true,
                                 surname: true,
                                 employee_Id: true,
+                                publicKey: true,
                             },
                         },
                     },
@@ -130,9 +132,9 @@ export class ChatService {
     }
 
     //создать сообщение
-    async createMessage(chatId: string, senderId: string, text: string) {
+    async createMessage(chatId: string, senderId: string, text: string, senderText?: string) {
         return this.prisma.message.create({
-            data: { chatId, senderId, text },
+            data: { chatId, senderId, text, senderText },
             include: {
                 sender: {
                     select: {

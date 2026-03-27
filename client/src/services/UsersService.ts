@@ -36,6 +36,10 @@ export default class UsersService {
         return $api.get<UserMeResponse>(API_USERS_SERVICE + '/lookup', { params });
     }
 
+    static async getContacts(): Promise<AxiosResponse<UserSearchItem[]>> {
+        return $api.get<UserSearchItem[]>(API_USERS_SERVICE + '/contacts');
+    }
+
     static async setRole(userId: string, role: 'admin' | 'user'): Promise<AxiosResponse<UserMeResponse>> {
         return $api.patch<UserMeResponse>(`${API_USERS_SERVICE}/${userId}/role`, { role });
     }

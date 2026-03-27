@@ -7,11 +7,35 @@
     margin-bottom: 32px;
 }
 
+.linkRow {
+    display: flex;
+    margin-top: 10px;
+    gap: 10px;
+    align-items: center;
+}
+
+.link {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #1e2130;
+    background: #0f1117;
+    color: #c8d0e8;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.link:hover {
+    border-color: #4f8ef7;
+}
+
 .title {
     font-family: 'DM Sans', 'Segoe UI', sans-serif;
     font-size: 24px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--color-text-main);
     margin: 0 0 6px;
 }
 
@@ -155,7 +179,7 @@ select.input option {
     line-height: 1.6;
 }
 
-.passwordBlock {
+.userDataBlock {
     width: 100%;
     background: #080a0f;
     border: 1px solid #1e2130;
@@ -164,6 +188,30 @@ select.input option {
     display: flex;
     flex-direction: column;
     gap: 10px;
+}
+
+.dataList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.dataList div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: #0f1117;
+    border: 1px solid #1e2130;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #c8d0e8;
+}
+
+.dataList b {
+    color: #7a8499;
+    font-weight: 500;
 }
 
 .passwordLabel {
@@ -180,35 +228,37 @@ select.input option {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    background: #0d1220;
+    border: 1px solid #2a3050;
+    border-radius: 8px;
 }
 
 .password {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 600;
     color: #4f8ef7;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
 }
 
-.copyBtn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 12px;
-    background: #1a1f2e;
-    border: 1px solid #2a3050;
-    border-radius: 6px;
-    color: #7a8aaa;
-    font-family: 'DM Sans', 'Segoe UI', sans-serif;
-    font-size: 13px;
+/* главная кнопка */
+.copyAllBtn {
+    margin-top: 6px;
+    width: 100%;
+    padding: 10px;
+    background: #4f8ef7;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-weight: 500;
     cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap;
+    transition: background 0.15s;
 }
 
-.copyBtn:hover {
-    background: #1e2540;
-    color: #c8d0e8;
+.copyAllBtn:hover {
+    background: #3a7de0;
 }
 
 .copyBtn svg {

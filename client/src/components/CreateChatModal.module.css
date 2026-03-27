@@ -1,0 +1,198 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 12, 0.85);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+}
+
+.modal {
+    background: #0c0e16;
+    border: 1px solid #1e2130;
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0;
+}
+
+.closeBtn {
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    color: #5a6480;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.closeBtn:hover { background: #1a1f2e; }
+.closeBtn svg { width: 16px; height: 16px; }
+
+.typeToggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.typeBtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px;
+    background: #0f1117;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    color: #5a6480;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.typeBtn svg { width: 16px; height: 16px; }
+.typeBtn:hover { border-color: #2a3050; color: #c8d0e8; }
+.typeBtnActive { background: #0d1a30; border-color: #1e3050; color: #4f8ef7; }
+
+.form { display: flex; flex-direction: column; gap: 14px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.label {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: #7a8499;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.input {
+    background: #080a0f;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: #c8d0e8;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+.input:focus { border-color: #4f8ef7; }
+.input::placeholder { color: #2a3050; }
+.inputError { border-color: #e05c6a !important; }
+
+.searchRow { display: flex; gap: 8px; }
+
+.searchBtn {
+    padding: 9px 14px;
+    background: #1a1f2e;
+    border: 1px solid #2a3050;
+    border-radius: 8px;
+    color: #7a8aaa;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+.searchBtn:hover { background: #1e2540; color: #c8d0e8; }
+
+.searchResults {
+    background: #080a0f;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+.searchResults {
+    -ms-overflow-style: none;  /* IE и Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.searchResults::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.searchItem {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: #c8d0e8;
+}
+.searchItem:hover { background: #0f1520; }
+.searchItemMeta { font-size: 12px; color: #3a4455; }
+
+.membersList { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.memberTag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #0d1a30;
+    border: 1px solid #1e3050;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: #4f8ef7;
+}
+.memberTag button {
+    background: transparent;
+    border: none;
+    color: #4f8ef7;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0;
+}
+
+.error {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: #e05c6a;
+}
+
+.submitBtn {
+    padding: 12px;
+    background: #4f8ef7;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+.submitBtn:hover { background: #3a7de0; }
+.submitBtn:disabled { opacity: 0.5; cursor: not-allowed; }

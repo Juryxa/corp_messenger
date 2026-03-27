@@ -4,6 +4,7 @@ import styles from './AdminRegisterPage.module.css';
 import {Context} from "../../main";
 import type {AxiosError} from 'axios';
 import type {CreatedAccount} from "../../models/response/RegisterResponse";
+import {NavLink} from "react-router-dom";
 
 interface RegisterFormData {
     name: string;
@@ -49,9 +50,18 @@ export function AdminRegisterPage() {
         }
     };
 
-    const handleCopy = () => {
+    const handleCopyAll = () => {
         if (!created) return;
-        navigator.clipboard.writeText(created.temporaryPassword);
+        const fullData = `
+        Имя: ${created.name}
+        Фамилия: ${created.surname}
+        Email: ${created.email}
+        ID: ${created.employee_Id}
+        Роль: ${created.role}
+        Пароль: ${created.temporaryPassword}
+            `.trim();
+
+        navigator.clipboard.writeText(fullData);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
@@ -66,6 +76,10 @@ export function AdminRegisterPage() {
             <div className={styles.header}>
                 <h1 className={styles.title}>Создание сотрудника</h1>
                 <p className={styles.subtitle}>Новый аккаунт получит одноразовый пароль</p>
+                <div className={styles.linkRow}>
+                    <NavLink to={'/home'} className={styles.link}>На главную</NavLink>
+                    <NavLink to={'/admin'} className={styles.link}>На админ-панель</NavLink>
+                </div>
             </div>
 
             {created ? (
@@ -81,24 +95,28 @@ export function AdminRegisterPage() {
                         Передайте сотруднику одноразовый пароль. При первом входе его потребуется сменить.
                     </p>
 
-                    <div className={styles.passwordBlock}>
-                        <span className={styles.passwordLabel}>Одноразовый пароль</span>
-                        <div className={styles.passwordRow}>
-                            <code className={styles.password}>{created.temporaryPassword}</code>
-                            <button className={styles.copyBtn} onClick={handleCopy}>
-                                {copied ? (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <polyline points="20 6 9 17 4 12"/>
-                                    </svg>
-                                ) : (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                        <rect x="9" y="9" width="13" height="13" rx="2"/>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                )}
-                                {copied ? 'Скопировано' : 'Копировать'}
-                            </button>
+                    <div className={styles.userDataBlock}>
+                        <span className={styles.passwordLabel}>Данные пользователя</span>
+
+                        <div className={styles.dataList}>
+                            <div><b>Имя:</b> {created.name}</div>
+                            <div><b>Фамилия:</b> {created.surname}</div>
+                            <div><b>Email:</b> {created.email}</div>
+                            <div><b>ID:</b> {created.employee_Id}</div>
+                            <div><b>Роль:</b> {created.role}</div>
                         </div>
+
+                        <div className={styles.passwordRow}>
+                            <span className={styles.passwordLabel}>Одноразовый пароль. Передайте его сотруднику.</span>
+                            <code className={styles.password}>
+                                {created.temporaryPassword}
+                            </code>
+
+                        </div>
+
+                        <button className={styles.copyAllBtn} onClick={handleCopyAll}>
+                            {copied ? 'Скопировано' : 'Скопировать всё'}
+                        </button>
                     </div>
 
                     <button className={styles.newBtn} onClick={handleCreateAnother}>

@@ -1,4 +1,4 @@
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import UsersService from "../../services/UsersService";
 import ChatService from "../../services/ChatService";
@@ -16,6 +16,9 @@ function isEmployeeId(value: string): boolean {
 const ContactsPage = () => {
     const navigate = useNavigate();
 
+    const [contacts, setContacts] = useState<UserSearchItem[]>([]);
+    const [contactsLoading, setContactsLoading] = useState(true);
+
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<UserSearchItem[]>([]);
     const [searching, setSearching] = useState(false);
@@ -30,6 +33,13 @@ const ContactsPage = () => {
         const v = identifier.trim();
         return isEmail(v) || isEmployeeId(v);
     }, [identifier]);
+
+    useEffect(() => {
+        UsersService.getContacts()
+            .then((res) => setContacts(res.data))
+            .finally(() => setContactsLoading(false));
+    }, []);
+
 
     const handleSearch = async () => {
         if (!canSearch || searching) return;
@@ -47,7 +57,6 @@ const ContactsPage = () => {
 
     const createDirectChat = async (userId: string) => {
         const res = await ChatService.createChat({ type: 'direct', targetUserId: userId });
-        // чат создан/найден — переходим в чаты
         if (res.data?.id) navigate('/chats');
     };
 
@@ -146,6 +155,36 @@ const ContactsPage = () => {
                     <div className={styles.empty}>
                         После добавления создаётся личный чат (если уже есть — будет использован существующий).
                     </div>
+                </div>
+
+                {/* Список контактов */}
+                <div className={styles.card}>
+                    <h2 className={styles.cardTitle}>Мои контакты</h2>
+                    {contactsLoading ? (
+                        <div className={styles.empty}>Загрузка...</div>
+                    ) : contacts.length === 0 ? (
+                        <div className={styles.empty}>Нет контактов</div>
+                    ) : (
+                        <div className={styles.list}>
+                            {contacts.map((u) => (
+                                <div key={u.id} className={styles.item}>
+                                    <div className={styles.contactAvatar}>
+                                        {u.name[0]}{u.surname[0]}
+                                    </div>
+                                    <div>
+                                        <div className={styles.name}>{u.name} {u.surname}</div>
+                                        <div className={styles.meta}>{u.email} · ID: {u.employee_Id}</div>
+                                    </div>
+                                    <button
+                                        className={styles.btn}
+                                        onClick={() => createDirectChat(u.id)}
+                                    >
+                                        Открыть чат
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

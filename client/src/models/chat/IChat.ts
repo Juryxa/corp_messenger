@@ -5,7 +5,7 @@ export type ChatType = 'direct' | 'group' | 'channel';
 
 export interface IChat {
     id: string;
-    type: ChatType;
+    type: 'direct' | 'group' | 'channel';
     name?: string;
     members: IChatMember[];
     messages?: IMessage[];

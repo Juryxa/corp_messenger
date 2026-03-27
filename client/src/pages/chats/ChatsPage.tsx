@@ -5,6 +5,7 @@ import {useCrypto} from '../../hooks/crypto-hooks/useCrypto';
 import styles from './ChatsPage.module.css';
 import ChatService from "../../services/ChatService";
 import type {IChat} from "../../models/chat/IChat";
+import {CreateChatModal} from "../../components/CreateChatModal";
 
 // ─── Хелперы ─────────────────────────────────────────────────────
 
@@ -26,9 +27,9 @@ function formatTime(dateStr: string): string {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     if (isToday) {
-        return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
     }
-    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    return date.toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit'});
 }
 
 function getChatTypeIcon(type: string) {
@@ -42,7 +43,8 @@ function getChatTypeIcon(type: string) {
     );
     if (type === 'channel') return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
+            <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.54a16 16 0 0 0 6 6l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/>
         </svg>
     );
     return null;
@@ -50,7 +52,7 @@ function getChatTypeIcon(type: string) {
 
 // ─── Компонент сообщения ─────────────────────────────────────────
 
-function MessageBubble({ message, isOwn }: {
+function MessageBubble({message, isOwn}: {
     message: { id: string; text: string; createdAt: string; sender: { id: string; name: string; surname: string } };
     isOwn: boolean;
 }) {
@@ -77,8 +79,8 @@ function MessageBubble({ message, isOwn }: {
 // ─── Главный компонент ───────────────────────────────────────────
 
 export default function ChatsPage() {
-    const { store } = useContext(Context);
-
+    const {store} = useContext(Context);
+    const [showCreateModal, setShowCreateModal] = useState(false);
     const [chats, setChats] = useState<IChat[]>([]);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [inputText, setInputText] = useState('');
@@ -88,11 +90,15 @@ export default function ChatsPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const { messages, setMessages, typingUsers, sendMessage, handleTyping } = useChat(selectedChatId);
-    const { importPublicKey, encryptMessage, loadPrivateKeyFromSession, decryptMessage } = useCrypto();
+    const {messages, setMessages, typingUsers, sendMessage, handleTyping} = useChat(selectedChatId);
+    const {importPublicKey, encryptMessage, loadPrivateKeyFromSession, decryptMessage} = useCrypto();
 
     const selectedChat = chats.find((c) => c.id === selectedChatId) ?? null;
     const chatName = selectedChat ? getChatName(selectedChat, store.user.id) : '';
+
+    const myMember = selectedChat === null ? undefined : selectedChat.members.find(
+        (m) => m.userId === store.user.id
+    );
 
     // Загружаем список чатов
     useEffect(() => {
@@ -111,7 +117,11 @@ export default function ChatsPage() {
                 res.data.messages.map(async (msg) => {
                     try {
                         if (privateKey) {
-                            msg.text = await decryptMessage(msg.text, privateKey);
+                            // Если это наше сообщение — используем senderText
+                            const textToDecrypt = msg.sender.id === store.user.id
+                                ? (msg.senderText ?? msg.text)
+                                : msg.text;
+                            msg.text = await decryptMessage(textToDecrypt, privateKey);
                         }
                     } catch {
                         msg.text = '[Не удалось расшифровать]';
@@ -125,7 +135,7 @@ export default function ChatsPage() {
 
     // Скролл вниз при новых сообщениях
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
     }, [messages]);
 
     // Отправить сообщение
@@ -137,18 +147,42 @@ export default function ChatsPage() {
         setInputText('');
 
         try {
-            // Шифруем для каждого участника — берём первый публичный ключ (для direct)
-            // Для группы нужно шифровать для каждого — упрощённая версия: шифруем своим ключом
-            const recipient = selectedChat.members.find((m) => m.userId !== store.user.id);
-            const publicKeyBase64 = recipient?.user.publicKey;
+            if (selectedChat.type === 'direct') {
+                const recipient = selectedChat.members.find((m) => m.userId !== store.user.id);
+                const recipientPublicKeyBase64 = recipient?.user.publicKey;
+                const myPublicKeyBase64 = selectedChat.members
+                    .find((m) => m.userId === store.user.id)?.user.publicKey;
 
-            let encryptedText = text;
-            if (publicKeyBase64) {
-                const publicKey = await importPublicKey(publicKeyBase64);
-                encryptedText = await encryptMessage(text, publicKey);
+                let encryptedForRecipient = text;
+                let encryptedForSelf = text;
+
+                if (recipientPublicKeyBase64) {
+                    const recipientKey = await importPublicKey(recipientPublicKeyBase64);
+                    encryptedForRecipient = await encryptMessage(text, recipientKey);
+                }
+                if (myPublicKeyBase64) {
+                    const myKey = await importPublicKey(myPublicKeyBase64);
+                    encryptedForSelf = await encryptMessage(text, myKey); // ← шифруем своим ключом
+                }
+
+                await sendMessage(encryptedForRecipient, encryptedForSelf); // ← два зашифрованных текста
+
+                const optimisticMessage = {
+                    id: crypto.randomUUID(),
+                    text, // показываем открытый текст сразу
+                    chatId: selectedChat.id,
+                    createdAt: new Date().toISOString(),
+                    sender: {
+                        id: store.user.id,
+                        name: store.user.name,
+                        surname: store.user.surname,
+                        employee_Id: store.user.employee_Id,
+                    },
+                };
+                setMessages((prev) => [...prev, optimisticMessage]);
+            } else {
+                await sendMessage(text, text);
             }
-
-            await sendMessage(text, encryptedText);
         } catch (e) {
             console.error('Ошибка отправки:', e);
         } finally {
@@ -168,6 +202,11 @@ export default function ChatsPage() {
         handleTyping();
     };
 
+    const handleChatCreated = (chat: IChat) => {
+        setChats((prev) => [chat, ...prev]);
+        setSelectedChatId(chat.id);
+    };
+
     if (store.isLoading) return <div className={styles.loading}>Загрузка...</div>;
 
     return (
@@ -176,12 +215,25 @@ export default function ChatsPage() {
             <aside className={styles.sidebar}>
                 <div className={styles.sidebarHeader}>
                     <h2 className={styles.sidebarTitle}>Чаты</h2>
+                    <button className={styles.newChatBtn} onClick={() => setShowCreateModal(true)}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
                 </div>
+
+                {showCreateModal && (
+                    <CreateChatModal
+                        onClose={() => setShowCreateModal(false)}
+                        onCreated={handleChatCreated}
+                    />
+                )}
 
                 {chatsLoading ? (
                     <div className={styles.sidebarLoading}>
                         {[...Array(5)].map((_, i) => (
-                            <div key={i} className={styles.skeletonItem} />
+                            <div key={i} className={styles.skeletonItem}/>
                         ))}
                     </div>
                 ) : chats.length === 0 ? (
@@ -190,7 +242,7 @@ export default function ChatsPage() {
                     <ul className={styles.chatList}>
                         {chats.map((chat) => {
                             const name = getChatName(chat, store.user.id);
-                            const lastMsg = chat.messages[0];
+                            const lastMsg = (chat.messages ?? [])[0];
                             const isActive = chat.id === selectedChatId;
 
                             return (
@@ -229,15 +281,16 @@ export default function ChatsPage() {
                 <main className={styles.dialog}>
                     {/* Шапка */}
                     <div className={styles.dialogHeader}>
-                        <div className={`${styles.chatAvatar} ${styles[`avatar_${selectedChat.type}`]} ${styles.headerAvatar}`}>
+                        <div
+                            className={`${styles.chatAvatar} ${styles[`avatar_${selectedChat.type}`]} ${styles.headerAvatar}`}>
                             {getChatTypeIcon(selectedChat.type) ?? getChatInitials(chatName)}
                         </div>
                         <div className={styles.dialogHeaderInfo}>
                             <span className={styles.dialogName}>{chatName}</span>
                             <span className={styles.dialogMeta}>
                                 {selectedChat.type === 'direct' ? 'Личный чат' :
-                                 selectedChat.type === 'group' ? `${selectedChat.members.length} участников` :
-                                 'Канал'}
+                                    selectedChat.type === 'group' ? `${selectedChat.members.length} участников` :
+                                        'Канал'}
                             </span>
                         </div>
                     </div>
@@ -266,7 +319,7 @@ export default function ChatsPage() {
                             </div>
                         )}
 
-                        <div ref={messagesEndRef} />
+                        <div ref={messagesEndRef}/>
                     </div>
 
                     {/* Поле ввода */}
@@ -295,9 +348,34 @@ export default function ChatsPage() {
                     )}
 
                     {selectedChat.type === 'channel' && (
-                        <div className={styles.channelNotice}>
-                            Только администраторы канала могут писать сообщения
-                        </div>
+
+                        myMember?.role === 'owner' ? (
+                            <div className={styles.inputArea}>
+                                <textarea
+                                    ref={inputRef}
+                                    className={styles.input}
+                                    placeholder="Написать сообщение..."
+                                    value={inputText}
+                                    onChange={handleInput}
+                                    onKeyDown={handleKeyDown}
+                                    rows={1}
+                                />
+                                <button
+                                    className={styles.sendBtn}
+                                    onClick={handleSend}
+                                    disabled={!inputText.trim() || sending}
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <line x1="22" y1="2" x2="11" y2="13"/>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        ) : (
+                            <div className={styles.channelNotice}>
+                                Только администраторы канала могут писать сообщения
+                            </div>
+                        )
                     )}
                 </main>
             ) : (

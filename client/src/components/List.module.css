@@ -3,8 +3,8 @@
     flex-direction: column;
     width: 64px;
     min-height: 100vh;
-    background-color: #0f1117;
-    border-right: 1px solid #1e2130;
+    background-color: var(--color-bg-main);
+    border-right: 1px solid var(--color-border);
     padding: 12px 0;
     position: fixed;
     left: 0;
@@ -15,18 +15,17 @@
     overflow: hidden;
 }
 
+
 .sidebar:hover {
     width: 200px;
 }
 
-/* Logo */
 .logo {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 52px;
     margin-bottom: 16px;
-    flex-shrink: 0;
 }
 
 .logoIcon {
@@ -35,8 +34,7 @@
     justify-content: center;
     width: 36px;
     height: 36px;
-    color: #4f8ef7;
-    flex-shrink: 0;
+    color: var(--color-primary);
 }
 
 .logoIcon svg {
@@ -65,7 +63,7 @@
     gap: 12px;
     padding: 10px 4px;
     border-radius: 10px;
-    color: #5a6480;
+    color: var(--color-text-muted);
     text-decoration: none;
     transition: background 0.15s, color 0.15s;
     white-space: nowrap;
@@ -73,38 +71,37 @@
 }
 
 .navLink:hover {
-    background: #1a1f2e;
-    color: #c8d0e8;
+    background: var(--color-bg-hover);
+    color: var(--color-text-secondary);
 }
 
 .navLinkActive {
     background: #1a2540;
-    color: #4f8ef7 !important;
+    color: var(--color-primary) !important;
 }
 
 .navLinkActive .navIcon {
-    color: #4f8ef7;
+    color: var(--color-primary);
 }
 
-/* Admin link accent */
 .navLinkAdmin {
     color: #7a6480;
 }
 
 .navLinkAdmin:hover {
-    background: #1e1a2e;
+    background: var(--color-bg-hover-alt);
     color: #c8a0e8;
 }
 
 .navLinkAdmin.navLinkActive {
     background: #1e1530;
-    color: #a06fd8 !important;
+    color: var(--color-admin) !important;
 }
 
 .adminItem {
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid #1e2130;
+    border-top: 1px solid var(--color-border);
 }
 
 /* Icon */
@@ -154,16 +151,14 @@
     border-radius: 10px;
     border: none;
     background: transparent;
-    color: #5a6480;
+    color: var(--color-text-muted);
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
-    white-space: nowrap;
-    overflow: hidden;
 }
 
 .logoutBtn:hover {
     background: #1f1520;
-    color: #e05c6a;
+    color: var(--color-danger);
 }
 
 .logoutBtn svg {

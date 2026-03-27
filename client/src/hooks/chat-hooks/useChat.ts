@@ -2,7 +2,7 @@ import {useCallback, useContext, useEffect, useRef, useState} from 'react';
 import {io, Socket} from 'socket.io-client';
 import {Context} from "../../main";
 import {useCrypto} from "../crypto-hooks/useCrypto";
-import {API_URL} from "../../http";
+import {SOCKET_URL} from "../../http";
 import type {IMessage} from "../../models/chat/IMessage";
 import type {ITypingUser} from "../../models/chat/ITypingUser";
 
@@ -21,18 +21,27 @@ export function useChat(chatId: string | null) {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const socket = io(`${API_URL}/chat`, {
+        const socket = io(`${SOCKET_URL}/chat`, {
             auth: { token },
             transports: ['websocket'],
         });
 
         socketRef.current = socket;
 
-        socket.on('connect', () => setConnected(true));
+        socket.on('connect', () => {
+            console.log('Socket подключён, id:', socket.id);
+            setConnected(true)}
+        );
+        socket.on('connect_error', (err) => {
+            console.error('Socket ошибка подключения:', err); // ← добавь
+        });
         socket.on('disconnect', () => setConnected(false));
 
         // Получаем новое сообщение — расшифровываем
         socket.on('newMessage', async (message: IMessage) => {
+            // Своё сообщение уже добавлено оптимистично
+            if (message.sender.id === store.user.id) return;
+
             try {
                 const privateKey = await loadPrivateKeyFromSession();
                 if (privateKey) {
@@ -77,9 +86,13 @@ export function useChat(chatId: string | null) {
 
     // Отправить сообщение
     const sendMessage = useCallback(
-        async (_text: string, encryptedText: string) => {
+        async (encryptedForRecipient: string, encryptedForSelf: string) => {
             if (!socketRef.current || !chatId) return;
-            socketRef.current.emit('sendMessage', { chatId, text: encryptedText });
+            socketRef.current.emit('sendMessage', {
+                chatId,
+                text: encryptedForRecipient,
+                senderText: encryptedForSelf,
+            });
         },
         [chatId],
     );

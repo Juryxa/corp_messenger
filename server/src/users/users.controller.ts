@@ -1,8 +1,7 @@
-import {Body, Controller, Get, Param, Patch, Post, Query, UseGuards} from '@nestjs/common';
+import {Body, Controller, Get, Param, Patch, Post, Query} from '@nestjs/common';
 import {UsersService} from './users.service';
 import {SaveKeysDto} from './dto/save-keys.dto';
 import {ApiBearerAuth, ApiOperation, ApiTags} from '@nestjs/swagger';
-import {JwtAuthGuard} from '../auth/guards/auth.guard';
 import {CurrentUser} from './decorators/current-user.decorator';
 import {AdminAuthorization, Authorization} from "../auth/decorators/authorization.decorator";
 import {SetRoleDto} from "./dto/set-role.dto";
@@ -70,6 +69,13 @@ export class UsersController {
           ? parsedEmployeeId
           : undefined,
     });
+  }
+
+  @ApiOperation({ summary: 'Получить контакты (собеседники из direct чатов)' })
+  @Authorization()
+  @Get('contacts')
+  getContacts(@CurrentUser() user: { id: string }) {
+    return this.usersService.getContacts(user.id);
   }
 
   @ApiOperation({ summary: 'Изменить роль пользователя (admin/user)' })

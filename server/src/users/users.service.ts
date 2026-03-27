@@ -89,6 +89,36 @@ export class UsersService {
         });
     }
 
+    async getContacts(userId: string) {
+        const chats = await this.prisma.chat.findMany({
+            where: {
+                type: 'direct',
+                members: { some: { userId } },
+            },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                surname: true,
+                                email: true,
+                                employee_Id: true,
+                                publicKey: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        // Возвращаем только собеседников (не себя)
+        return chats
+            .map((chat) => chat.members.find((m) => m.userId !== userId)?.user)
+            .filter(Boolean);
+    }
+
     async lookupUser(params: { email?: string; employeeId?: number }) {
         const user = await this.prisma.user.findFirst({
             where: {

@@ -61,6 +61,11 @@ export class AuthService {
 		return {
 			userId: user.id,
 			temporaryPassword,
+			name,
+			surname,
+			email,
+			employee_Id,
+			role,
 			message: 'Передайте этот пароль сотруднику. Он будет действителен до первого входа.',
 		};
 	}

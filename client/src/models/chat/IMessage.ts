@@ -8,6 +8,7 @@ export interface IMessageSender {
 export interface IMessage {
     id: string;
     text: string;
+    senderText?: string;
     chatId?: string;
     createdAt: string;
     sender: IMessageSender;

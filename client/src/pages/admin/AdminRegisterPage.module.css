@@ -1,0 +1,235 @@
+.page {
+    padding: 40px 48px;
+    max-width: 640px;
+}
+
+.header {
+    margin-bottom: 32px;
+}
+
+.title {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0 0 6px;
+}
+
+.subtitle {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: #5a6480;
+    margin: 0;
+}
+
+/* Form */
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.label {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: #7a8499;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.input {
+    background: #0f1117;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: #c8d0e8;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.input:focus {
+    border-color: #4f8ef7;
+}
+
+.input::placeholder {
+    color: #3a4055;
+}
+
+.inputError {
+    border-color: #e05c6a !important;
+}
+
+select.input option {
+    background: #0f1117;
+}
+
+.error {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    color: #e05c6a;
+}
+
+.submitBtn {
+    margin-top: 8px;
+    padding: 12px;
+    background: #4f8ef7;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.submitBtn:hover {
+    background: #3a7de0;
+}
+
+.submitBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Success card */
+.successCard {
+    background: #0f1117;
+    border: 1px solid #1e2130;
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+}
+
+.successIcon {
+    width: 52px;
+    height: 52px;
+    background: #0d2010;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4ade80;
+}
+
+.successIcon svg {
+    width: 26px;
+    height: 26px;
+}
+
+.successTitle {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0;
+}
+
+.successText {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: #5a6480;
+    margin: 0;
+    max-width: 380px;
+    line-height: 1.6;
+}
+
+.passwordBlock {
+    width: 100%;
+    background: #080a0f;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.passwordLabel {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    color: #5a6480;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.passwordRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.password {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: #4f8ef7;
+    letter-spacing: 0.1em;
+}
+
+.copyBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #1a1f2e;
+    border: 1px solid #2a3050;
+    border-radius: 6px;
+    color: #7a8aaa;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.copyBtn:hover {
+    background: #1e2540;
+    color: #c8d0e8;
+}
+
+.copyBtn svg {
+    width: 14px;
+    height: 14px;
+}
+
+.newBtn {
+    margin-top: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    color: #5a6480;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.newBtn:hover {
+    border-color: #4f8ef7;
+    color: #4f8ef7;
+}

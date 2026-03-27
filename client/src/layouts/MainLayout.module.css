@@ -1,0 +1,10 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.content {
+    margin-left: 64px; /* ширина свёрнутого List */
+    flex: 1;
+    overflow: auto;
+}

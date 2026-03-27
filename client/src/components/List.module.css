@@ -1,0 +1,174 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 64px;
+    min-height: 100vh;
+    background-color: #0f1117;
+    border-right: 1px solid #1e2130;
+    padding: 12px 0;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.sidebar:hover {
+    width: 200px;
+}
+
+/* Logo */
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+}
+
+.logoIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: #4f8ef7;
+    flex-shrink: 0;
+}
+
+.logoIcon svg {
+    width: 28px;
+    height: 28px;
+}
+
+/* Nav list */
+.navList {
+    list-style: none;
+    margin: 0;
+    padding: 0 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+}
+
+.navItem {
+    width: 100%;
+}
+
+.navLink {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border-radius: 10px;
+    color: #5a6480;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.navLink:hover {
+    background: #1a1f2e;
+    color: #c8d0e8;
+}
+
+.navLinkActive {
+    background: #1a2540;
+    color: #4f8ef7 !important;
+}
+
+.navLinkActive .navIcon {
+    color: #4f8ef7;
+}
+
+/* Admin link accent */
+.navLinkAdmin {
+    color: #7a6480;
+}
+
+.navLinkAdmin:hover {
+    background: #1e1a2e;
+    color: #c8a0e8;
+}
+
+.navLinkAdmin.navLinkActive {
+    background: #1e1530;
+    color: #a06fd8 !important;
+}
+
+.adminItem {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #1e2130;
+}
+
+/* Icon */
+.navIcon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+}
+
+.navIcon svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Label — hidden until hover expands sidebar */
+.navLabel {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.18s, transform 0.18s;
+    pointer-events: none;
+}
+
+.sidebar:hover .navLabel {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Bottom section */
+.bottom {
+    padding: 8px 8px 4px;
+    flex-shrink: 0;
+}
+
+.logoutBtn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 30px 4px;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
+    color: #5a6480;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.logoutBtn:hover {
+    background: #1f1520;
+    color: #e05c6a;
+}
+
+.logoutBtn svg {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    margin-left: 8px;
+}

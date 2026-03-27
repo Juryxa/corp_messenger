@@ -1,0 +1,179 @@
+.page {
+    padding: 40px 48px;
+    max-width: 900px;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.title {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin: 0 0 6px;
+}
+
+.subtitle {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: #5a6480;
+    margin: 0;
+}
+
+.linkRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.link {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #1e2130;
+    background: #0f1117;
+    color: #c8d0e8;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.link:hover {
+    border-color: #4f8ef7;
+}
+
+.card {
+    background: #0f1117;
+    border: 1px solid #1e2130;
+    border-radius: 12px;
+    padding: 18px;
+}
+
+.cardTitle {
+    margin: 0 0 10px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #c8d0e8;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.input {
+    flex: 1;
+    background: #080a0f;
+    border: 1px solid #1e2130;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    color: #c8d0e8;
+    outline: none;
+}
+
+.input:focus {
+    border-color: #4f8ef7;
+}
+
+.btn {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #1e2130;
+    background: #121625;
+    color: #c8d0e8;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    border-color: #4f8ef7;
+}
+
+.btnPrimary {
+    background: #4f8ef7;
+    border-color: #4f8ef7;
+    color: white;
+}
+
+.btnPrimary:hover {
+    background: #3a7de0;
+    border-color: #3a7de0;
+}
+
+.btnDanger {
+    background: #3a0f16;
+    border-color: #5a1421;
+    color: #ffb4be;
+}
+
+.btnDanger:hover {
+    border-color: #e05c6a;
+}
+
+.btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.error {
+    margin-top: 10px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    color: #e05c6a;
+}
+
+.userCard {
+    margin-top: 14px;
+    border: 1px solid #1e2130;
+    background: #080a0f;
+    border-radius: 10px;
+    padding: 14px;
+}
+
+.userName {
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #e2e8f0;
+}
+
+.meta {
+    margin-top: 3px;
+    font-family: 'DM Sans', 'Segoe UI', sans-serif;
+    font-size: 12px;
+    color: #5a6480;
+}
+
+.badgeRow {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.badge {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 999px;
+    border: 1px solid #1e2130;
+    color: #c8d0e8;
+    background: #0f1117;
+}
+

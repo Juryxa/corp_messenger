@@ -3,26 +3,159 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
-  moduleFormat  = "cjs"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
-model User{
+model User {
   id String @id @default(uuid(4))
 
-  email String @unique
-  employee_Id Int @unique
-  password String
+  email       String @unique
+  employee_Id Int    @unique
+  password    String
+  publicKey          String?
+  encryptedPrivateKey String?
+  cryptoSalt          String?
 
-  name String
+  isTemporaryPassword Boolean  @default(false) // нужно ли менять пароль
+
+
+  name    String
   surname String
 
-  role Role
+  role             Role
+
+  sessions Session[]
+  chatMembers      ChatMember[]
+  messages         Message[]
+  callParticipants CallParticipant[]
 
   @@map("users")
 }
+
+model Session {
+  id           String   @id @default(uuid(4))
+  refreshToken String   @unique
+  userAgent    String?  // браузер/устройство
+  ip           String?  // IP адрес
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Chat {
+  id          String   @id @default(uuid(4))
+  type        ChatType
+  name        String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  members  ChatMember[]
+  messages Message[]
+  calls    Call[]
+
+  @@map("chats")
+}
+
+model ChatMember {
+  id       String         @id @default(uuid(4))
+  role     ChatMemberRole @default(member)
+  joinedAt DateTime       @default(now())
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+  @@map("chat_members")
+}
+
+model Message {
+  id        String   @id @default(uuid(4))
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isRead    Boolean  @default(false)
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  senderId String
+  sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Call {
+  id        String     @id @default(uuid(4))
+  type      CallType
+  status    CallStatus @default(pending)
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime   @default(now())
+
+  chatId String
+  chat   Chat   @relation(fields: [chatId], references: [id])
+
+  participants CallParticipant[]
+
+  @@map("calls")
+}
+
+model CallParticipant {
+  id       String            @id @default(uuid(4))
+  status   ParticipantStatus @default(invited)
+  joinedAt DateTime?
+
+  callId String
+  call   Call   @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([callId, userId])
+  @@map("call_participants")
+}
+
 enum Role {
   admin
   user
+}
+
+enum ChatType {
+  direct
+  group
+  channel
+}
+
+enum ChatMemberRole {
+  owner
+  admin
+  member
+}
+
+enum CallType {
+  direct
+  group
+}
+
+enum CallStatus {
+  pending
+  active
+  ended
+  missed
+}
+
+enum ParticipantStatus {
+  invited
+  joined
+  declined
+  left
 }

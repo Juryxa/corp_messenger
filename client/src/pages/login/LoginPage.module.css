@@ -72,6 +72,10 @@
     color: #a0aec0;
 }
 
+.errorMsg {
+    color: red;
+}
+
 .submitButton {
     margin-top: 8px;
     padding: 14px 24px;

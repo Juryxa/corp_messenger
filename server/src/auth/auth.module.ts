@@ -6,8 +6,8 @@ import {AuthService} from './auth.service';
 import {AuthController} from './auth.controller';
 import {JwtStrategy} from './strategies/jwt.strategy';
 import {PrismaModule} from '../prisma/prisma.module';
-import * as path from 'path';
-import * as fs from 'fs';
+import {SessionGateway} from "../session/session.gateway";
+import {SessionService} from "../session/session.service";
 
 @Module({
 	imports: [
@@ -15,22 +15,13 @@ import * as fs from 'fs';
 		PassportModule,
 		JwtModule.registerAsync({
 			inject: [ConfigService],
-			useFactory: (config: ConfigService) => {
-				const privateKey = fs.readFileSync(
-					path.resolve(config.getOrThrow<string>('PRIVATE_KEY_PATH')),
-					'utf8'
-				);
-				return {
-					privateKey,
-					signOptions: {
-						algorithm: 'RS256',
-					},
-				};
-			},
+			useFactory: (config: ConfigService) => ({
+				signOptions: { algorithm: 'ES256' },
+			}),
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy],
+	providers: [AuthService, JwtStrategy, SessionGateway, SessionService],
 	exports: [JwtStrategy],
 })
 export class AuthModule {}

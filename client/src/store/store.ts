@@ -3,12 +3,21 @@ import {makeAutoObservable} from "mobx";
 import AuthService from "../services/AuthService";
 import type {AxiosError, AxiosResponse} from 'axios';
 import type {CreatedAccount} from "../models/response/RegisterResponse";
+import {jwtDecode} from 'jwt-decode';
+import {connectSessionSocket, disconnectSessionSocket} from "../websocket/sessionSocket";
+
+interface JwtPayload {
+    id: string;
+    role: 'admin' | 'user';
+    sessionId: string;
+}
 
 export default class Store {
     user = {} as IUser;
     isAuth = false;
     isLoading = true;
     isTemporaryPassword = false;
+
 
     constructor() {
         makeAutoObservable(this);
@@ -36,7 +45,8 @@ export default class Store {
             localStorage.setItem('token', response.data.accessToken);
             this.setAuth(true);
             this.setUser(response.data.user);
-            this.setTemporaryPassword(response.data.isTemporaryPassword); // ← добавить
+            this.setTemporaryPassword(response.data.isTemporaryPassword);
+            this.reconnectSessionSocket();
         } catch (e) {
             const error = e as AxiosError<{ message: string }>;
             return error.response?.data?.message;
@@ -68,10 +78,24 @@ export default class Store {
 
     async logout() {
         try {
+            // Читаем актуальный sessionId прямо сейчас из текущего токена
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const decoded = jwtDecode<JwtPayload>(token);
+                    if (decoded.sessionId) {
+                        await AuthService.deleteSession(decoded.sessionId);
+                    }
+                } catch {
+                    // игнорируем ошибку декодирования
+                }
+            }
+            localStorage.clear();
+            sessionStorage.clear();
             await AuthService.logout();
-            localStorage.removeItem('token');
             this.setAuth(false);
             this.setUser({} as IUser);
+            disconnectSessionSocket();
         } catch (e) {
             const error = e as AxiosError<{ message: string }>;
             return error.response?.data?.message;
@@ -85,6 +109,7 @@ export default class Store {
             localStorage.setItem('token', response.data.accessToken);
             this.setAuth(true);
             this.setUser(response.data.user);
+            this.reconnectSessionSocket();
         } catch (e) {
             this.setAuth(false);
             const error = e as AxiosError<{ message: string }>;
@@ -92,5 +117,24 @@ export default class Store {
         } finally {
             this.setLoading(false);
         }
+    }
+
+    reconnectSessionSocket() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const socket = connectSessionSocket(token);
+
+        socket.on('SESSION_REVOKED', () => {
+            console.warn('Сессия отозвана');
+
+            disconnectSessionSocket();
+
+            localStorage.removeItem('token');
+            this.setAuth(false);
+            this.setUser({} as IUser);
+
+            window.location.href = '/login';
+        });
     }
 }

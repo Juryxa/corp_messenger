@@ -1,10 +1,9 @@
-import {useEffect, useState} from 'react';
+import {useContext, useEffect, useState} from 'react';
 import styles from './SessionsPage.module.css';
 import AuthService from "../../services/AuthService";
 import type {ISession} from "../../models/ISession";
-import $api from "../../http";
-import {store} from "../../main";
-import type {IUser} from "../../models/IUser";
+import {Context} from "../../main";
+
 
 function formatDate(dateStr: string): string {
     const date = new Date(dateStr);
@@ -41,6 +40,7 @@ export function SessionsPage() {
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [deletingAll, setDeletingAll] = useState(false);
+    const {store} = useContext(Context);
 
     const fetchSessions = async () => {
         try {
@@ -60,14 +60,10 @@ export function SessionsPage() {
     const handleDelete = async (session: ISession) => {
         setDeletingId(session.id);
         try {
-            await $api.delete(`/auth/sessions/${session.id}`);
+            await AuthService.deleteSession(session.id);
 
             if (session.isCurrent) {
-                // Удаляем текущую сессию — разлогиниваем
-                localStorage.removeItem('token');
-                store.setAuth(false);
-                store.setUser({} as IUser);
-                return; // App.tsx сам редиректнет на /login
+                await store.logout();
             }
 
             setSessions((prev) => prev.filter((s) => s.id !== session.id));

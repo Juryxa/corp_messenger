@@ -8,7 +8,12 @@ import {ThrottlerExceptionFilter} from "./filters/throttler-exception.filter";
 
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create(AppModule, {
+		cors: {
+			origin: process.env.CORS_ALLOWED_ORIGINS?.split(',').map(o => o.trim()),
+			credentials: true,
+		}
+	});
 
 	app.use(cookieParser());
 
@@ -23,7 +28,7 @@ async function bootstrap() {
 	app.enableCors({
 		origin: process.env.CORS_ALLOWED_ORIGINS?.split(',').map(o => o.trim()),
 		credentials: true,
-		methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+		methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 	})
 
 	setupSwagger(app);

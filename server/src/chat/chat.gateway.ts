@@ -54,7 +54,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
             const payload = await this.jwtService.verifyAsync(token, {
                 publicKey,
-                algorithms: ['RS256'],
+                algorithms: ['ES256'],
             });
 
             socket.data.userId = payload.id;

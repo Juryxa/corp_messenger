@@ -1,9 +1,9 @@
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AuthService } from '../auth.service';
-import { ConfigService } from '@nestjs/config';
-import { Injectable } from '@nestjs/common';
-import { JwtPayload } from '../interfaces/jwt.interface';
+import {PassportStrategy} from '@nestjs/passport';
+import {ExtractJwt, Strategy} from 'passport-jwt';
+import {AuthService} from '../auth.service';
+import {ConfigService} from '@nestjs/config';
+import {Injectable} from '@nestjs/common';
+import {JwtPayload} from '../interfaces/jwt.interface';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 			jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
 			ignoreExpiration: false,
 			secretOrKey: fs.readFileSync(publicKeyPath, 'utf8'),
-			algorithms: ['RS256']
+			algorithms: ['ES256']
 		});
 	}
 

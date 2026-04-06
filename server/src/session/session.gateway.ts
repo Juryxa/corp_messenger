@@ -1,10 +1,9 @@
 import {OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer} from '@nestjs/websockets';
-import {SessionService} from './session.service';
 import {Server, Socket} from "socket.io";
 import {JwtService} from "@nestjs/jwt";
 import {ConfigService} from "@nestjs/config";
-import fs from "fs";
-import path from "path";
+import * as fs from 'fs';
+import * as path from 'path';
 import {Injectable, UsePipes, ValidationPipe} from "@nestjs/common";
 
 @Injectable()
@@ -15,6 +14,7 @@ import {Injectable, UsePipes, ValidationPipe} from "@nestjs/common";
         .split(',')
         .map((o) => o.trim()),
     credentials: true,
+    transports: ['websocket'],
   },
   namespace: '/session',
 })
@@ -26,7 +26,6 @@ export class SessionGateway implements OnGatewayConnection, OnGatewayDisconnect 
     private connectedUsers = new Map<string, string>();
 
     constructor(
-        private readonly sessionService: SessionService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService
     ) {}
@@ -42,16 +41,21 @@ export class SessionGateway implements OnGatewayConnection, OnGatewayDisconnect 
           'utf8',
       );
 
-      const payload = await this.jwtService.verifyAsync(token, {
+      const payload: any = await this.jwtService.verifyAsync(token, {
         publicKey,
-        algorithms: ['RS256'],
+        algorithms: ['ES256'],
       });
 
       socket.data.userId = payload.id;
+      socket.data.sessionId = payload.sessionId;
+
+      // ✅ ключевой момент
+      socket.join(`user:${payload.id}`);
+      socket.join(`session:${payload.sessionId}`);
+
       this.connectedUsers.set(socket.id, payload.id);
 
-
-      console.log(`Подключён: ${payload.id}`);
+      console.log(`Подключён: ${payload.id}, session: ${payload.sessionId}`);
     } catch {
       socket.disconnect();
     }

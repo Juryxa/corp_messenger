@@ -12,6 +12,9 @@ import {isDev} from '../utils/is-dev.util';
 import {refreshConvertToMs} from '../utils/refresh-convert-to-ms.util';
 import {randomBytes} from 'crypto';
 import {UAParser} from 'ua-parser-js';
+import {SessionService} from "../session/session.service";
+import * as path from 'path';
+import * as fs from 'fs';
 
 type Role = 'admin' | 'user';
 
@@ -25,6 +28,7 @@ export class AuthService {
 		private readonly prismaService: PrismaService,
 		private readonly configService: ConfigService,
 		private readonly jwtService: JwtService,
+		private readonly sessionService: SessionService,
 	) {
 		this.JWT_ACCESS_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_ACCESS_TOKEN_TTL');
 		this.JWT_REFRESH_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_REFRESH_TOKEN_TTL');
@@ -211,11 +215,29 @@ export class AuthService {
 		}
 
 		await this.prismaService.session.delete({ where: { id: sessionId } });
+
+		// 🔥 отправляем событие
+		await this.sessionService.revokeSession(sessionId);
+
 		return true;
 	}
 
+// auth.service.ts
 	async deleteAllSessions(userId: string, req: Request) {
 		const currentRefreshToken = req.cookies['refreshToken'];
+
+		// Находим ID текущей сессии чтобы не трогать её
+		const currentSession = await this.prismaService.session.findFirst({
+			where: { refreshToken: currentRefreshToken },
+		});
+
+		// Получаем все сессии кроме текущей
+		const sessionsToDelete = await this.prismaService.session.findMany({
+			where: {
+				userId,
+				id: { not: currentSession?.id },
+			},
+		});
 
 		await this.prismaService.session.deleteMany({
 			where: {
@@ -224,6 +246,11 @@ export class AuthService {
 			},
 		});
 
+		// Шлём revoke только на удалённые сессии — не на текущую
+		for (const session of sessionsToDelete) {
+			await this.sessionService.revokeSession(session.id);
+		}
+
 		return true;
 	}
 
@@ -231,7 +258,7 @@ export class AuthService {
 		await this.prismaService.session.deleteMany({
 			where: { userId },
 		});
-
+		await this.sessionService.revokeAllUserSessions(userId);
 		return true;
 	}
 
@@ -246,7 +273,7 @@ export class AuthService {
 	// ─── Приватные методы ────────────────────────────────────────
 
 	private async auth(res: Response, req: Request, id: string, role: Role) {
-		const { accessToken, refreshToken } = this.generateTokens(id, role);
+
 		const user = await this.prismaService.user.findUnique({ where: { id } });
 		if (!user) throw new NotFoundException('Пользователь не найден');
 
@@ -257,8 +284,24 @@ export class AuthService {
 		const userAgent = `${ua.browser.name ?? 'Unknown'} ${ua.browser.version ?? ''} / ${ua.os.name ?? 'Unknown'}`;
 		const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
-		await this.prismaService.session.create({
-			data: { refreshToken, userAgent, ip, expiresAt, userId: id },
+		// ✅ 1. создаём session СНАЧАЛА
+		const session = await this.prismaService.session.create({
+			data:{
+				refreshToken: 'temp', // временно
+				userAgent,
+				ip,
+				expiresAt,
+				userId: id,
+			}
+		})
+
+		// ✅ 2. генерируем токены с sessionId
+		const { accessToken, refreshToken } = this.generateTokens(id, role, session.id);
+
+		// ✅ 3. обновляем refreshToken в сессии
+		await this.prismaService.session.update({
+			where: { id: session.id },
+			data: { refreshToken },
 		});
 
 		this.setCookie(res, refreshToken, expiresAt);
@@ -266,14 +309,23 @@ export class AuthService {
 		return { accessToken, user };
 	}
 
-	private generateTokens(id: string, role: Role) {
-		const payload: JwtPayload = { id, role };
+	private generateTokens(id: string, role: Role, sessionId: string) {
+		const privateKey = fs.readFileSync(
+			path.resolve(this.configService.getOrThrow('PRIVATE_KEY_PATH')),
+			'utf8'
+		);
+
+		const payload: JwtPayload = { id, role, sessionId };
 
 		const accessToken = this.jwtService.sign(payload, {
+			privateKey,
+			algorithm: 'ES256',
 			expiresIn: this.JWT_ACCESS_TOKEN_TTL,
 		});
 
 		const refreshToken = this.jwtService.sign(payload, {
+			privateKey,
+			algorithm: 'ES256',
 			expiresIn: this.JWT_REFRESH_TOKEN_TTL,
 		});
 

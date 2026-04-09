@@ -132,9 +132,21 @@ export class ChatService {
     }
 
     //создать сообщение
-    async createMessage(chatId: string, senderId: string, text: string, senderText?: string) {
+    async createMessage(
+        chatId: string,
+        senderId: string,
+        encryptedText: string,
+        encryptedKeySender: string,
+        encryptedKeyRecipient?: string,
+    ) {
         return this.prisma.message.create({
-            data: { chatId, senderId, text, senderText },
+            data: {
+                chatId,
+                senderId,
+                encryptedText,
+                encryptedKeySender,
+                encryptedKeyRecipient,
+            },
             include: {
                 sender: {
                     select: {
@@ -148,9 +160,8 @@ export class ChatService {
         });
     }
 
-    // История сообщений
     async getMessages(chatId: string, userId: string, query: MessagesQueryDto) {
-        await this.getChat(chatId, userId); // проверка доступа
+        await this.getChat(chatId, userId);
 
         const [messages, total] = await this.prisma.$transaction([
             this.prisma.message.findMany({
@@ -173,7 +184,7 @@ export class ChatService {
         ]);
 
         return {
-            messages: messages.reverse(), // хронологический порядок
+            messages: messages.reverse(),
             total,
             skip: query.skip,
             take: query.take,

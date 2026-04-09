@@ -5,11 +5,10 @@ import {ConfigModule} from '@nestjs/config';
 import {PrismaModule} from './prisma/prisma.module';
 import {AuthModule} from './auth/auth.module';
 import {ChatModule} from './chat/chat.module';
-import {CallModule} from './call/call.module';
 import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
 import {APP_GUARD} from "@nestjs/core";
 import {UsersModule} from './users/users.module';
-import { SessionModule } from './session/session.module';
+import {SessionModule} from './session/session.module';
 
 @Module({
 	imports: [
@@ -31,7 +30,6 @@ import { SessionModule } from './session/session.module';
 		PrismaModule,
 		AuthModule,
 		ChatModule,
-		CallModule,
 		UsersModule,
 		SessionModule
 	],

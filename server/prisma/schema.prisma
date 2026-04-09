@@ -29,7 +29,7 @@ model User {
   sessions Session[]
   chatMembers      ChatMember[]
   messages         Message[]
-  callParticipants CallParticipant[]
+
 
   @@map("users")
 }
@@ -57,7 +57,7 @@ model Chat {
 
   members  ChatMember[]
   messages Message[]
-  calls    Call[]
+
 
   @@map("chats")
 }
@@ -78,12 +78,13 @@ model ChatMember {
 }
 
 model Message {
-  id        String   @id @default(uuid(4))
-  text      String   // зашифровано для получателя
-  senderText String? // зашифровано для отправителя
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  isRead    Boolean  @default(false)
+  id                    String   @id @default(uuid(4))
+  encryptedText         String   // AES зашифрованный текст
+  encryptedKeyRecipient String?  // AES ключ зашифрованный RSA получателя
+  encryptedKeySender    String   // AES ключ зашифрованный RSA отправителя
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  isRead                Boolean  @default(false)
 
   chatId   String
   chat     Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
@@ -93,36 +94,7 @@ model Message {
   @@map("messages")
 }
 
-model Call {
-  id        String     @id @default(uuid(4))
-  type      CallType
-  status    CallStatus @default(pending)
-  startedAt DateTime?
-  endedAt   DateTime?
-  createdAt DateTime   @default(now())
 
-  chatId String
-  chat   Chat   @relation(fields: [chatId], references: [id])
-
-  participants CallParticipant[]
-
-  @@map("calls")
-}
-
-model CallParticipant {
-  id       String            @id @default(uuid(4))
-  status   ParticipantStatus @default(invited)
-  joinedAt DateTime?
-
-  callId String
-  call   Call   @relation(fields: [callId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@unique([callId, userId])
-  @@map("call_participants")
-}
 
 enum Role {
   admin
@@ -141,21 +113,3 @@ enum ChatMemberRole {
   member
 }
 
-enum CallType {
-  direct
-  group
-}
-
-enum CallStatus {
-  pending
-  active
-  ended
-  missed
-}
-
-enum ParticipantStatus {
-  invited
-  joined
-  declined
-  left
-}

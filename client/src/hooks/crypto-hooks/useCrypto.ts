@@ -106,6 +106,106 @@ export function useCrypto() {
 
     // ─── Шифрование сообщения ────────────────────────────────────
 
+    const encryptMessageHybrid = useCallback(async (
+        text: string,
+        recipientPublicKey: CryptoKey | null,
+        senderPublicKey: CryptoKey,
+    ): Promise<{
+        encryptedText: string;
+        encryptedKeyRecipient: string | null;
+        encryptedKeySender: string;
+    }> => {
+        // 1. Генерируем случайный AES-GCM ключ
+        const aesKey = await window.crypto.subtle.generateKey(
+            { name: 'AES-GCM', length: 256 },
+            true,
+            ['encrypt', 'decrypt'],
+        );
+
+        // 2. Шифруем текст AES ключом
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(text);
+        const encryptedBuffer = await window.crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            encoded,
+        );
+
+        // Объединяем iv + зашифрованный текст
+        const encryptedWithIv = new Uint8Array(iv.length + encryptedBuffer.byteLength);
+        encryptedWithIv.set(iv);
+        encryptedWithIv.set(new Uint8Array(encryptedBuffer), iv.length);
+        const encryptedText = btoa(String.fromCharCode(...encryptedWithIv));
+
+        // 3. Экспортируем AES ключ как raw bytes
+        const rawAesKey = await window.crypto.subtle.exportKey('raw', aesKey);
+
+        // 4. Шифруем AES ключ RSA ключом отправителя (всегда)
+        const encryptedKeyForSenderBuffer = await window.crypto.subtle.encrypt(
+            { name: 'RSA-OAEP' },
+            senderPublicKey,
+            rawAesKey,
+        );
+        const encryptedKeySender = btoa(
+            String.fromCharCode(...new Uint8Array(encryptedKeyForSenderBuffer))
+        );
+
+        // 5. Шифруем AES ключ RSA ключом получателя (если есть)
+        let encryptedKeyRecipient: string | null = null;
+        if (recipientPublicKey) {
+            const encryptedKeyForRecipientBuffer = await window.crypto.subtle.encrypt(
+                { name: 'RSA-OAEP' },
+                recipientPublicKey,
+                rawAesKey,
+            );
+            encryptedKeyRecipient = btoa(
+                String.fromCharCode(...new Uint8Array(encryptedKeyForRecipientBuffer))
+            );
+        }
+
+        return { encryptedText, encryptedKeyRecipient, encryptedKeySender };
+    }, []);
+
+    const decryptMessageHybrid = useCallback(async (
+        encryptedText: string,
+        encryptedKey: string,
+        privateKey: CryptoKey,
+    ): Promise<string> => {
+        // 1. Расшифровываем AES ключ своим RSA приватным ключом
+        const encryptedKeyBytes = Uint8Array.from(
+            atob(encryptedKey),
+            c => c.charCodeAt(0)
+        );
+        const rawAesKey = await window.crypto.subtle.decrypt(
+            { name: 'RSA-OAEP' },
+            privateKey,
+            encryptedKeyBytes,
+        );
+
+        // 2. Импортируем AES ключ
+        const aesKey = await window.crypto.subtle.importKey(
+            'raw',
+            rawAesKey,
+            { name: 'AES-GCM' },
+            false,
+            ['decrypt'],
+        );
+
+        // 3. Расшифровываем текст — разделяем iv и данные
+        const data = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
+        const iv = data.slice(0, 12);
+        const encrypted = data.slice(12);
+
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            aesKey,
+            encrypted,
+        );
+
+        return new TextDecoder().decode(decrypted);
+    }, []);
+
+
     const encryptMessage = useCallback(async (
         text: string,
         recipientPublicKey: CryptoKey,
@@ -164,6 +264,8 @@ export function useCrypto() {
         importPrivateKey,
         encryptPrivateKey,
         decryptPrivateKey,
+        encryptMessageHybrid,
+        decryptMessageHybrid,
         encryptMessage,
         decryptMessage,
         savePrivateKeyToSession,

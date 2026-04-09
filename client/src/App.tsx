@@ -6,7 +6,6 @@ import {Context} from './main';
 import ChatsPage from './pages/chats/ChatsPage';
 import CalendarPage from './pages/calendar/CalendarPage';
 import ContactsPage from './pages/contacts/ContactsPage';
-import StoragePage from './pages/storage/StoragePage';
 import PollsPage from './pages/polls/PollsPage';
 import AdminPage from './pages/admin/AdminPage';
 import {MainLayout} from './layouts/MainLayout';
@@ -56,7 +55,6 @@ const App = observer(() => {
                     <Route path="/home" element={<HomePage/>}/>
                     <Route path="/chats" element={<ChatsPage/>}/>
                     <Route path="/contacts" element={<ContactsPage/>}/>
-                    <Route path="/storage" element={<StoragePage/>}/>
                     <Route path="/calendar" element={<CalendarPage/>}/>
                     <Route path="/polls" element={<PollsPage/>}/>
                     <Route path="/sessions" element={<SessionsPage/>}/>

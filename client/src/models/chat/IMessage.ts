@@ -7,10 +7,12 @@ export interface IMessageSender {
 
 export interface IMessage {
     id: string;
-    text: string;
-    senderText?: string;
-    chatId?: string;
+    encryptedText: string;
+    encryptedKeyRecipient?: string;
+    encryptedKeySender: string;
     createdAt: string;
+    chatId: string;
     sender: IMessageSender;
+    text: string;
 }
 

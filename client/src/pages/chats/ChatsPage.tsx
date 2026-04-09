@@ -6,6 +6,7 @@ import styles from './ChatsPage.module.css';
 import ChatService from "../../services/ChatService";
 import type {IChat} from "../../models/chat/IChat";
 import {CreateChatModal} from "../../components/CreateChatModal";
+import type {IMessage} from "../../models/chat/IMessage";
 
 // ─── Хелперы ─────────────────────────────────────────────────────
 
@@ -79,7 +80,9 @@ function MessageBubble({message, isOwn}: {
 // ─── Главный компонент ───────────────────────────────────────────
 
 export default function ChatsPage() {
-    const {store} = useContext(Context);
+    const { store } = useContext(Context);
+    const { importPublicKey, encryptMessageHybrid, loadPrivateKeyFromSession, decryptMessageHybrid } = useCrypto();
+
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [chats, setChats] = useState<IChat[]>([]);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -90,21 +93,17 @@ export default function ChatsPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    const {messages, setMessages, typingUsers, sendMessage, handleTyping} = useChat(selectedChatId);
-    const {importPublicKey, encryptMessage, loadPrivateKeyFromSession, decryptMessage} = useCrypto();
+    const { messages, setMessages, typingUsers, sendSignalMessage, handleTyping } = useChat(selectedChatId);
 
     const selectedChat = chats.find((c) => c.id === selectedChatId) ?? null;
     const chatName = selectedChat ? getChatName(selectedChat, store.user.id) : '';
+    const myMember = selectedChat?.members.find((m) => m.userId === store.user.id);
 
-    const myMember = selectedChat === null ? undefined : selectedChat.members.find(
-        (m) => m.userId === store.user.id
-    );
-
-    // Загружаем список чатов
+    // Загрузка чатов
     useEffect(() => {
-        ChatService.getChats().then((res) => {
-            setChats(res.data);
-        }).finally(() => setChatsLoading(false));
+        ChatService.getChats()
+            .then((res) => setChats(res.data))
+            .finally(() => setChatsLoading(false));
     }, []);
 
     // Загружаем историю сообщений при выборе чата
@@ -113,15 +112,27 @@ export default function ChatsPage() {
 
         ChatService.getMessages(selectedChatId).then(async (res) => {
             const privateKey = await loadPrivateKeyFromSession();
+
             const decrypted = await Promise.all(
                 res.data.messages.map(async (msg) => {
                     try {
                         if (privateKey) {
-                            // Если это наше сообщение — используем senderText
-                            const textToDecrypt = msg.sender.id === store.user.id
-                                ? (msg.senderText ?? msg.text)
-                                : msg.text;
-                            msg.text = await decryptMessage(textToDecrypt, privateKey);
+                            const isOwn = msg.sender.id === store.user.id;
+                            // Своё сообщение расшифровываем своим ключом (encryptedKeySender)
+                            // Чужое — ключом получателя (encryptedKeyRecipient)
+                            const encryptedKey = isOwn
+                                ? msg.encryptedKeySender
+                                : msg.encryptedKeyRecipient;
+
+                            if (encryptedKey) {
+                                msg.text = await decryptMessageHybrid(
+                                    msg.encryptedText,
+                                    encryptedKey,
+                                    privateKey,
+                                );
+                            } else {
+                                msg.text = '[Нет ключа]';
+                            }
                         }
                     } catch {
                         msg.text = '[Не удалось расшифровать]';
@@ -135,7 +146,7 @@ export default function ChatsPage() {
 
     // Скролл вниз при новых сообщениях
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({behavior: 'smooth'});
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     // Отправить сообщение
@@ -147,48 +158,56 @@ export default function ChatsPage() {
         setInputText('');
 
         try {
+            const myPublicKeyBase64 = myMember?.user.publicKey;
+            if (!myPublicKeyBase64) {
+                console.error('Нет публичного ключа отправителя');
+                setInputText(text);
+                return;
+            }
+
+            const senderPublicKey = await importPublicKey(myPublicKeyBase64);
+
+            let recipientPublicKey: CryptoKey | null = null;
             if (selectedChat.type === 'direct') {
                 const recipient = selectedChat.members.find((m) => m.userId !== store.user.id);
-                const recipientPublicKeyBase64 = recipient?.user.publicKey;
-                const myPublicKeyBase64 = selectedChat.members
-                    .find((m) => m.userId === store.user.id)?.user.publicKey;
-
-                let encryptedForRecipient = text;
-                let encryptedForSelf = text;
-
-                if (recipientPublicKeyBase64) {
-                    const recipientKey = await importPublicKey(recipientPublicKeyBase64);
-                    encryptedForRecipient = await encryptMessage(text, recipientKey);
+                if (recipient?.user.publicKey) {
+                    recipientPublicKey = await importPublicKey(recipient.user.publicKey);
                 }
-                if (myPublicKeyBase64) {
-                    const myKey = await importPublicKey(myPublicKeyBase64);
-                    encryptedForSelf = await encryptMessage(text, myKey); // ← шифруем своим ключом
-                }
-
-                await sendMessage(encryptedForRecipient, encryptedForSelf); // ← два зашифрованных текста
-
-                const optimisticMessage = {
-                    id: crypto.randomUUID(),
-                    text, // показываем открытый текст сразу
-                    chatId: selectedChat.id,
-                    createdAt: new Date().toISOString(),
-                    sender: {
-                        id: store.user.id,
-                        name: store.user.name,
-                        surname: store.user.surname,
-                        employee_Id: store.user.employee_Id,
-                    },
-                };
-                setMessages((prev) => [...prev, optimisticMessage]);
-            } else {
-                await sendMessage(text, text);
             }
+
+            const { encryptedText, encryptedKeyRecipient, encryptedKeySender } =
+                await encryptMessageHybrid(text, recipientPublicKey, senderPublicKey);
+
+            sendSignalMessage({
+                chatId: selectedChat.id,
+                encryptedText,
+                encryptedKeySender,
+                encryptedKeyRecipient: encryptedKeyRecipient ?? undefined,
+            });
+
+            const optimistic: IMessage = {
+                id: crypto.randomUUID(),
+                encryptedText,
+                encryptedKeySender,
+                text,
+                chatId: selectedChat.id,
+                createdAt: new Date().toISOString(),
+                sender: {
+                    id: store.user.id,
+                    name: store.user.name,
+                    surname: store.user.surname,
+                    employee_Id: store.user.employee_Id,
+                },
+            };
+            setMessages((prev) => [...prev, optimistic]);
         } catch (e) {
             console.error('Ошибка отправки:', e);
+            setInputText(text);
         } finally {
             setSending(false);
         }
     };
+
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {

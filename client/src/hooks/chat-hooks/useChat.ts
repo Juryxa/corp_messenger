@@ -1,20 +1,19 @@
 import {useCallback, useContext, useEffect, useRef, useState} from 'react';
 import {io, Socket} from 'socket.io-client';
-import {Context} from "../../main";
-import {useCrypto} from "../crypto-hooks/useCrypto";
-import {SOCKET_URL} from "../../http";
-import type {IMessage} from "../../models/chat/IMessage";
-import type {ITypingUser} from "../../models/chat/ITypingUser";
-
+import {Context} from '../../main';
+import {useCrypto} from '../crypto-hooks/useCrypto';
+import {SOCKET_URL} from '../../http';
+import type {IMessage} from '../../models/chat/IMessage';
+import type {ITypingUser} from '../../models/chat/ITypingUser';
 
 export function useChat(chatId: string | null) {
     const { store } = useContext(Context);
+    const { loadPrivateKeyFromSession, decryptMessageHybrid } = useCrypto();
     const socketRef = useRef<Socket | null>(null);
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
     const [connected, setConnected] = useState(false);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const { loadPrivateKeyFromSession, decryptMessage } = useCrypto();
 
     // Подключаемся к WebSocket
     useEffect(() => {
@@ -29,34 +28,44 @@ export function useChat(chatId: string | null) {
         socketRef.current = socket;
 
         socket.on('connect', () => {
-            console.log('Socket подключён, id:', socket.id);
-            setConnected(true)}
-        );
-        socket.on('connect_error', (err) => {
-            console.error('Socket ошибка подключения:', err); // ← добавь
+            console.log('Chat socket подключён:', socket.id);
+            setConnected(true);
         });
+
+        socket.on('connect_error', (err) => {
+            console.error('Chat socket ошибка:', err);
+        });
+
         socket.on('disconnect', () => setConnected(false));
 
-        // Получаем новое сообщение — расшифровываем
         socket.on('newMessage', async (message: IMessage) => {
-            // Своё сообщение уже добавлено оптимистично
+            // Своё сообщение добавлено оптимистично
             if (message.sender.id === store.user.id) return;
 
             try {
                 const privateKey = await loadPrivateKeyFromSession();
-                if (privateKey) {
-                    message.text = await decryptMessage(message.text, privateKey);
+                if (privateKey && message.encryptedKeyRecipient) {
+                    message.text = await decryptMessageHybrid(
+                        message.encryptedText,
+                        message.encryptedKeyRecipient,
+                        privateKey,
+                    );
+                } else {
+                    message.text = '[Нет ключа для расшифровки]';
                 }
-            } catch {
+            } catch (e) {
+                console.error('Ошибка расшифровки:', e);
                 message.text = '[Не удалось расшифровать]';
             }
+
             setMessages((prev) => [...prev, message]);
         });
 
-        // Индикатор печати
         socket.on('userTyping', ({ userId, isTyping }: ITypingUser) => {
             setTypingUsers((prev) =>
-                isTyping ? [...new Set([...prev, userId])] : prev.filter((id) => id !== userId),
+                isTyping
+                    ? [...new Set([...prev, userId])]
+                    : prev.filter((id) => id !== userId),
             );
         });
 
@@ -64,40 +73,54 @@ export function useChat(chatId: string | null) {
             socket.disconnect();
             socketRef.current = null;
         };
-    }, [decryptMessage, loadPrivateKeyFromSession, store.user.id]);
+    }, [store.user.id]);
 
-    // При смене чата — подключаемся к комнате и загружаем историю
+    // Сброс при смене чата + загрузка истории из localStorage
     useEffect(() => {
-        if (!chatId || !socketRef.current) return;
+        setTypingUsers([]);
 
-        socketRef.current.emit('joinChat', { chatId });
-
-        // Сбрасываем через колбэк чтобы не вызывать setState синхронно
-        const resetState = () => {
+        if (!chatId) {
             setMessages([]);
-            setTypingUsers([]);
-        };
+            return;
+        }
 
-        // Небольшой таймаут чтобы React не жаловался на синхронный setState в эффекте
-        const timeout = setTimeout(resetState, 0);
-
-        return () => clearTimeout(timeout);
+        const stored = localStorage.getItem(`chat_history:${chatId}`);
+        if (stored) {
+            try {
+                setMessages(JSON.parse(stored));
+            } catch {
+                setMessages([]);
+            }
+        } else {
+            setMessages([]);
+        }
     }, [chatId]);
 
-    // Отправить сообщение
-    const sendMessage = useCallback(
-        async (encryptedForRecipient: string, encryptedForSelf: string) => {
-            if (!socketRef.current || !chatId) return;
-            socketRef.current.emit('sendMessage', {
-                chatId,
-                text: encryptedForRecipient,
-                senderText: encryptedForSelf,
-            });
+    // Подключение к комнате при смене чата
+    useEffect(() => {
+        if (!chatId || !socketRef.current) return;
+        socketRef.current.emit('joinChat', { chatId });
+    }, [chatId]);
+
+    // Сохраняем историю при изменении сообщений
+    useEffect(() => {
+        if (!chatId || messages.length === 0) return;
+        localStorage.setItem(`chat_history:${chatId}`, JSON.stringify(messages));
+    }, [messages, chatId]);
+
+    const sendSignalMessage = useCallback(
+        (payload: {
+            chatId: string;
+            encryptedText: string;
+            encryptedKeySender: string;
+            encryptedKeyRecipient?: string;
+        }) => {
+            if (!socketRef.current) return;
+            socketRef.current.emit('sendMessage', payload);
         },
-        [chatId],
+        [],
     );
 
-    // Индикатор печати
     const sendTyping = useCallback(
         (isTyping: boolean) => {
             if (!socketRef.current || !chatId) return;
@@ -117,7 +140,7 @@ export function useChat(chatId: string | null) {
         setMessages,
         typingUsers,
         connected,
-        sendMessage,
+        sendSignalMessage, // переименовано для ясности
         handleTyping,
     };
 }

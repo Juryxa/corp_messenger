@@ -1,15 +1,16 @@
-import {IsNotEmpty, IsOptional, IsString, IsUUID} from 'class-validator';
+import {IsOptional, IsString, IsUUID} from 'class-validator';
 
 export class SendMessageDto {
     @IsUUID()
-    @IsNotEmpty()
     chatId: string;
 
     @IsString()
-    @IsNotEmpty()
-    text: string; // зашифровано для получателя
+    encryptedText: string;        // AES зашифрованный текст
+
+    @IsString()
+    encryptedKeySender: string;   // AES ключ зашифрованный своим RSA
 
     @IsString()
     @IsOptional()
-    senderText?: string; // зашифровано для отправителя
+    encryptedKeyRecipient?: string; // AES ключ зашифрованный RSA получателя (для direct)
 }

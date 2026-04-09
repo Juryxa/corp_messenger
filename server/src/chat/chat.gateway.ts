@@ -92,17 +92,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
         if (chat.type === 'channel') {
             const member = chat.members.find((m) => m.userId === userId);
-            if (!member || !['owner', 'admin'].includes(member.role)) { // owner уже есть
+            if (!member || !['owner', 'admin'].includes(member.role)) {
                 throw new WsException('Недостаточно прав для отправки сообщений');
             }
         }
 
-
         const message = await this.chatService.createMessage(
             dto.chatId,
             userId,
-            dto.text,
-            dto.senderText,
+            dto.encryptedText,
+            dto.encryptedKeySender,
+            dto.encryptedKeyRecipient,
         );
 
         this.server.to(dto.chatId).emit('newMessage', message);

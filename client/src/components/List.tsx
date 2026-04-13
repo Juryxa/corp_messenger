@@ -100,7 +100,7 @@ export function List() {
     return (
         <nav className={styles.sidebar}>
             <div className={styles.logo}>
-                <NavLink to={'/home'}>
+                <NavLink to={'/chats'}>
                     <span className={styles.logoIcon}>
                         <svg viewBox="0 0 24 24" fill="currentColor">
                             <path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/>

@@ -77,7 +77,6 @@ export function AdminRegisterPage() {
                 <h1 className={styles.title}>Создание сотрудника</h1>
                 <p className={styles.subtitle}>Новый аккаунт получит одноразовый пароль</p>
                 <div className={styles.linkRow}>
-                    <NavLink to={'/home'} className={styles.link}>На главную</NavLink>
                     <NavLink to={'/admin'} className={styles.link}>На админ-панель</NavLink>
                 </div>
             </div>

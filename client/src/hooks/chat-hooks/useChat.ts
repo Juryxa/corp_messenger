@@ -6,6 +6,15 @@ import {SOCKET_URL} from '../../http';
 import type {IMessage} from '../../models/chat/IMessage';
 import type {ITypingUser} from '../../models/chat/ITypingUser';
 
+type SendMessagePayload = {
+    chatId: string;
+    encryptedText: string;
+    encryptedKeySender?: string;
+    encryptedKeyRecipient?: string;
+    groupKeys?: { userId: string; encryptedKey: string }[];
+    senderPublicKey: string;
+};
+
 export function useChat(chatId: string | null) {
     const { store } = useContext(Context);
     const { loadPrivateKeyFromSession, decryptMessageHybrid } = useCrypto();
@@ -15,7 +24,6 @@ export function useChat(chatId: string | null) {
     const [connected, setConnected] = useState(false);
     const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // Подключаемся к WebSocket
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) return;
@@ -39,22 +47,40 @@ export function useChat(chatId: string | null) {
         socket.on('disconnect', () => setConnected(false));
 
         socket.on('newMessage', async (message: IMessage) => {
-            // Своё сообщение добавлено оптимистично
-            if (message.sender.id === store.user.id) return;
+            if (message.sender.id === store.user.id) return; // свои уже добавлены с plaintext
 
             try {
                 const privateKey = await loadPrivateKeyFromSession();
-                if (privateKey && message.encryptedKeyRecipient) {
-                    message.text = await decryptMessageHybrid(
-                        message.encryptedText,
-                        message.encryptedKeyRecipient,
-                        privateKey,
-                    );
-                } else {
-                    message.text = '[Нет ключа для расшифровки]';
+                if (!privateKey) {
+                    message.text = '[Нет ключа]';
+                    setMessages(prev => [...prev, message]);
+                    return;
                 }
+
+                let encryptedKeyToUse: string;
+                const senderPubForDecrypt = message.senderPublicKey;
+
+                const isGroup = !!(message.groupKeys && message.groupKeys.length > 0);
+
+                if (isGroup) {
+                    const myKey = message.groupKeys!.find((k: any) => k.userId === store.user.id);
+                    if (!myKey) throw new Error('Нет моего ключа в groupKeys');
+                    encryptedKeyToUse = myKey.encryptedKey;
+                } else {
+                    // direct (чужое)
+                    if (!message.encryptedKeyRecipient) throw new Error('Нет encryptedKeyRecipient');
+                    encryptedKeyToUse = message.encryptedKeyRecipient;
+                }
+
+                message.text = await decryptMessageHybrid(
+                    message.encryptedText,
+                    encryptedKeyToUse,
+                    privateKey,
+                    false,                    // в группах и для чужих direct — всегда false
+                    senderPubForDecrypt
+                );
             } catch (e) {
-                console.error('Ошибка расшифровки:', e);
+                console.error('Ошибка расшифровки входящего сообщения:', e);
                 message.text = '[Не удалось расшифровать]';
             }
 
@@ -75,7 +101,7 @@ export function useChat(chatId: string | null) {
         };
     }, [store.user.id]);
 
-    // Сброс при смене чата + загрузка истории из localStorage
+    // Сброс + загрузка истории из localStorage при смене чата
     useEffect(() => {
         setTypingUsers([]);
 
@@ -96,25 +122,20 @@ export function useChat(chatId: string | null) {
         }
     }, [chatId]);
 
-    // Подключение к комнате при смене чата
+    // Подключение к комнате
     useEffect(() => {
         if (!chatId || !socketRef.current) return;
         socketRef.current.emit('joinChat', { chatId });
     }, [chatId]);
 
-    // Сохраняем историю при изменении сообщений
+    // Сохранение истории
     useEffect(() => {
         if (!chatId || messages.length === 0) return;
         localStorage.setItem(`chat_history:${chatId}`, JSON.stringify(messages));
     }, [messages, chatId]);
 
     const sendSignalMessage = useCallback(
-        (payload: {
-            chatId: string;
-            encryptedText: string;
-            encryptedKeySender: string;
-            encryptedKeyRecipient?: string;
-        }) => {
+        (payload: SendMessagePayload) => {
             if (!socketRef.current) return;
             socketRef.current.emit('sendMessage', payload);
         },
@@ -140,7 +161,7 @@ export function useChat(chatId: string | null) {
         setMessages,
         typingUsers,
         connected,
-        sendSignalMessage, // переименовано для ясности
+        sendSignalMessage,
         handleTyping,
     };
 }

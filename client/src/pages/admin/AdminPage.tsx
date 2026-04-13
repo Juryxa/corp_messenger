@@ -82,7 +82,6 @@ const AdminPage = () => {
                     <p className={styles.subtitle}>Поиск пользователя и админ-действия</p>
                 </div>
                 <div className={styles.linkRow}>
-                    <NavLink to={'/home'} className={styles.link}>На главную</NavLink>
                     <NavLink to={'/admin/register'} className={styles.link}>Регистрация</NavLink>
                 </div>
             </div>

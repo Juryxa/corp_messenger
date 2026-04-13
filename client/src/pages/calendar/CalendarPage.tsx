@@ -5,7 +5,7 @@ const CalendarPage = () => {
     return (
         <div>
             Календарь
-            <NavLink to={'/home'}>
+            <NavLink to={'/chats'}>
                 На главную
             </NavLink>
         </div>

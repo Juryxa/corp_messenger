@@ -106,7 +106,21 @@ export class ChatService {
                         ],
                     },
                 },
-                include: { members: true },
+                include: {
+                    members: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    surname: true,
+                                    employee_Id: true,
+                                    publicKey: true, // ← добавить везде
+                                },
+                            },
+                        },
+                    },
+                },
             });
         }
 
@@ -127,7 +141,21 @@ export class ChatService {
                 description,
                 members: { create: members },
             },
-            include: { members: true },
+            include: {
+                members: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                surname: true,
+                                employee_Id: true,
+                                publicKey: true,
+                            },
+                        },
+                    },
+                },
+            },
         });
     }
 
@@ -136,16 +164,29 @@ export class ChatService {
         chatId: string,
         senderId: string,
         encryptedText: string,
-        encryptedKeySender: string,
-        encryptedKeyRecipient?: string,
+        options: {
+            encryptedKeySender?: string;
+            encryptedKeyRecipient?: string;
+            senderPublicKey?: string;
+            groupKeys?: { userId: string; encryptedKey: string }[];
+        } = {},
     ) {
         return this.prisma.message.create({
             data: {
                 chatId,
                 senderId,
                 encryptedText,
-                encryptedKeySender,
-                encryptedKeyRecipient,
+                encryptedKeySender: options.encryptedKeySender ?? null,
+                encryptedKeyRecipient: options.encryptedKeyRecipient ?? null,
+                senderPublicKey: options.senderPublicKey ?? null,
+                ...(options.groupKeys ? {
+                    groupKeys: {
+                        create: options.groupKeys.map((k) => ({
+                            userId: k.userId,
+                            encryptedKey: k.encryptedKey,
+                        })),
+                    },
+                } : {}),
             },
             include: {
                 sender: {
@@ -156,6 +197,7 @@ export class ChatService {
                         employee_Id: true,
                     },
                 },
+                groupKeys: true,
             },
         });
     }
@@ -178,6 +220,7 @@ export class ChatService {
                             employee_Id: true,
                         },
                     },
+                    groupKeys: true,
                 },
             }),
             this.prisma.message.count({ where: { chatId } }),

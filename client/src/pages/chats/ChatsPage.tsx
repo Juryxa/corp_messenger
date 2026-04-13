@@ -6,7 +6,7 @@ import styles from './ChatsPage.module.css';
 import ChatService from "../../services/ChatService";
 import type {IChat} from "../../models/chat/IChat";
 import {CreateChatModal} from "../../components/CreateChatModal";
-import type {IMessage} from "../../models/chat/IMessage";
+import {useSearchParams} from "react-router-dom";
 
 // ─── Хелперы ─────────────────────────────────────────────────────
 
@@ -81,11 +81,14 @@ function MessageBubble({message, isOwn}: {
 
 export default function ChatsPage() {
     const { store } = useContext(Context);
-    const { importPublicKey, encryptMessageHybrid, loadPrivateKeyFromSession, decryptMessageHybrid } = useCrypto();
+    const { importPublicKey, encryptMessageHybrid, encryptMessageForGroup,
+        loadPrivateKeyFromSession, decryptMessageHybrid } = useCrypto();
 
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [chats, setChats] = useState<IChat[]>([]);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+    const [searchParams] = useSearchParams();
+    const queryChatId = searchParams.get('chat_id');
     const [inputText, setInputText] = useState('');
     const [chatsLoading, setChatsLoading] = useState(true);
     const [sending, setSending] = useState(false);
@@ -99,6 +102,7 @@ export default function ChatsPage() {
     const chatName = selectedChat ? getChatName(selectedChat, store.user.id) : '';
     const myMember = selectedChat?.members.find((m) => m.userId === store.user.id);
 
+
     // Загрузка чатов
     useEffect(() => {
         ChatService.getChats()
@@ -108,41 +112,66 @@ export default function ChatsPage() {
 
     // Загружаем историю сообщений при выборе чата
     useEffect(() => {
-        if (!selectedChatId) return;
+        if (queryChatId) {
+            setSelectedChatId(queryChatId);
+        }
+        if (!selectedChatId || !selectedChat) return;
 
         ChatService.getMessages(selectedChatId).then(async (res) => {
             const privateKey = await loadPrivateKeyFromSession();
+            if (!privateKey) {
+                setMessages(res.data.messages.map((msg: any) => ({ ...msg, text: '[Нет ключа]' })));
+                return;
+            }
 
-            const decrypted = await Promise.all(
-                res.data.messages.map(async (msg) => {
+            const decryptedMessages = await Promise.all(
+                res.data.messages.map(async (msg: any) => {
                     try {
-                        if (privateKey) {
-                            const isOwn = msg.sender.id === store.user.id;
-                            // Своё сообщение расшифровываем своим ключом (encryptedKeySender)
-                            // Чужое — ключом получателя (encryptedKeyRecipient)
-                            const encryptedKey = isOwn
-                                ? msg.encryptedKeySender
-                                : msg.encryptedKeyRecipient;
+                        const isOwn = msg.sender.id === store.user.id;
+                        let encryptedKeyToUse: string | undefined;
+                        let isSelfMessage = false;
+                        let senderPubForDecrypt: string | undefined;
 
-                            if (encryptedKey) {
-                                msg.text = await decryptMessageHybrid(
-                                    msg.encryptedText,
-                                    encryptedKey,
-                                    privateKey,
-                                );
+                        if (selectedChat.type === 'direct') {
+                            if (isOwn) {
+                                encryptedKeyToUse = msg.encryptedKeySender;
+                                isSelfMessage = true;
                             } else {
-                                msg.text = '[Нет ключа]';
+                                encryptedKeyToUse = msg.encryptedKeyRecipient;
+                                senderPubForDecrypt = msg.senderPublicKey;
+                            }
+                        } else {
+                            // === ГРУППА или КАНАЛ ===
+                            const myKey = msg.groupKeys?.find((k: any) => k.userId === store.user.id);
+                            if (myKey) {
+                                encryptedKeyToUse = myKey.encryptedKey;
+                                senderPubForDecrypt = msg.senderPublicKey;   // ← важно!
                             }
                         }
-                    } catch {
+
+                        if (!encryptedKeyToUse) {
+                            msg.text = '[Нет ключа для этого сообщения]';
+                            return msg;
+                        }
+
+                        msg.text = await decryptMessageHybrid(
+                            msg.encryptedText,
+                            encryptedKeyToUse,
+                            privateKey,
+                            isSelfMessage,
+                            senderPubForDecrypt
+                        );
+                    } catch (e) {
+                        console.error(`Ошибка расшифровки сообщения ${msg.id}:`, e);
                         msg.text = '[Не удалось расшифровать]';
                     }
                     return msg;
-                }),
+                })
             );
-            setMessages(decrypted);
+
+            setMessages(decryptedMessages);
         });
-    }, [selectedChatId]);
+    }, [selectedChatId, queryChatId, selectedChat, store.user.id, decryptMessageHybrid, loadPrivateKeyFromSession]);
 
     // Скролл вниз при новых сообщениях
     useEffect(() => {
@@ -158,48 +187,83 @@ export default function ChatsPage() {
         setInputText('');
 
         try {
+            const privateKey = await loadPrivateKeyFromSession();
+            if (!privateKey) { setInputText(text); return; }
+
             const myPublicKeyBase64 = myMember?.user.publicKey;
-            if (!myPublicKeyBase64) {
-                console.error('Нет публичного ключа отправителя');
-                setInputText(text);
-                return;
-            }
+            if (!myPublicKeyBase64) { setInputText(text); return; }
 
-            const senderPublicKey = await importPublicKey(myPublicKeyBase64);
-
-            let recipientPublicKey: CryptoKey | null = null;
             if (selectedChat.type === 'direct') {
                 const recipient = selectedChat.members.find((m) => m.userId !== store.user.id);
-                if (recipient?.user.publicKey) {
-                    recipientPublicKey = await importPublicKey(recipient.user.publicKey);
-                }
+                const recipientPublicKey = recipient?.user.publicKey
+                    ? await importPublicKey(recipient.user.publicKey)
+                    : null;
+
+                const { encryptedText, encryptedKeyRecipient, encryptedKeySender, senderPublicKey } =
+                    await encryptMessageHybrid(text, recipientPublicKey, privateKey, myPublicKeyBase64);
+
+                sendSignalMessage({
+                    chatId: selectedChat.id,
+                    encryptedText,
+                    encryptedKeySender,
+                    encryptedKeyRecipient: encryptedKeyRecipient ?? undefined,
+                    senderPublicKey,
+                });
+
+                setMessages((prev) => [...prev, {
+                    id: crypto.randomUUID(),
+                    encryptedText,
+                    encryptedKeySender,
+                    senderPublicKey,
+                    text,
+                    chatId: selectedChat.id,
+                    createdAt: new Date().toISOString(),
+                    sender: {
+                        id: store.user.id,
+                        name: store.user.name,
+                        surname: store.user.surname,
+                        employee_Id: store.user.employee_Id,
+                    },
+                }]);
+
+            } else {
+                const memberKeys = await Promise.all(
+                    selectedChat.members
+                        .filter((m) => m.user?.publicKey)
+                        .map(async (m) => ({
+                            userId: m.userId,
+                            publicKey: await importPublicKey(m.user.publicKey!),
+                        }))
+                );
+
+                if (memberKeys.length === 0) { setInputText(text); return; }
+
+                const { encryptedText, groupKeys, senderPublicKey } =
+                    await encryptMessageForGroup(text, memberKeys, privateKey, myPublicKeyBase64);
+
+                sendSignalMessage({
+                    chatId: selectedChat.id,
+                    encryptedText,
+                    groupKeys,
+                    senderPublicKey,
+                });
+
+                setMessages((prev) => [...prev, {
+                    id: crypto.randomUUID(),
+                    encryptedText,
+                    groupKeys,
+                    senderPublicKey,
+                    text,
+                    chatId: selectedChat.id,
+                    createdAt: new Date().toISOString(),
+                    sender: {
+                        id: store.user.id,
+                        name: store.user.name,
+                        surname: store.user.surname,
+                        employee_Id: store.user.employee_Id,
+                    },
+                }]);
             }
-
-            const { encryptedText, encryptedKeyRecipient, encryptedKeySender } =
-                await encryptMessageHybrid(text, recipientPublicKey, senderPublicKey);
-
-            sendSignalMessage({
-                chatId: selectedChat.id,
-                encryptedText,
-                encryptedKeySender,
-                encryptedKeyRecipient: encryptedKeyRecipient ?? undefined,
-            });
-
-            const optimistic: IMessage = {
-                id: crypto.randomUUID(),
-                encryptedText,
-                encryptedKeySender,
-                text,
-                chatId: selectedChat.id,
-                createdAt: new Date().toISOString(),
-                sender: {
-                    id: store.user.id,
-                    name: store.user.name,
-                    surname: store.user.surname,
-                    employee_Id: store.user.employee_Id,
-                },
-            };
-            setMessages((prev) => [...prev, optimistic]);
         } catch (e) {
             console.error('Ошибка отправки:', e);
             setInputText(text);

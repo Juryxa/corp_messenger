@@ -29,7 +29,8 @@ model User {
   sessions Session[]
   chatMembers      ChatMember[]
   messages         Message[]
-
+  createdPolls Poll[]
+  pollVotes    PollVote[]
 
   @@map("users")
 }
@@ -79,9 +80,11 @@ model ChatMember {
 
 model Message {
   id                    String   @id @default(uuid(4))
-  encryptedText         String   // AES зашифрованный текст
-  encryptedKeyRecipient String?  // AES ключ зашифрованный RSA получателя
-  encryptedKeySender    String   // AES ключ зашифрованный RSA отправителя
+  encryptedText         String
+  encryptedKeyRecipient String?
+  encryptedKeySender    String?
+  senderPublicKey       String?  // ← публичный ECDH ключ отправителя
+  groupKeys             MessageGroupKey[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   isRead                Boolean  @default(false)
@@ -94,7 +97,71 @@ model Message {
   @@map("messages")
 }
 
+model MessageGroupKey {
+  id           String @id @default(uuid(4))
+  userId       String
+  encryptedKey String // AES ключ зашифрованный RSA ключом этого юзера
 
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_group_keys")
+}
+
+model Poll {
+  id          String     @id @default(uuid(4))
+  title       String
+  description String?
+  type        PollType
+  isAnonymous Boolean    @default(false)
+  startsAt    DateTime   @default(now())
+  endsAt      DateTime
+  createdAt   DateTime   @default(now())
+
+  creatorId   String
+  creator     User       @relation(fields: [creatorId], references: [id])
+
+  options     PollOption[]
+  votes       PollVote[]
+
+  @@map("polls")
+}
+
+model PollOption {
+  id     String @id @default(uuid(4))
+  text   String
+  order  Int
+
+  pollId String
+  poll   Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  votes  PollVote[]
+
+  @@map("poll_options")
+}
+
+model PollVote {
+  id        String   @id @default(uuid(4))
+  createdAt DateTime @default(now())
+
+  pollId    String
+  poll      Poll   @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  optionId  String
+  option    PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User   @relation(fields: [userId], references: [id])
+
+  @@unique([pollId, userId, optionId])
+  @@map("poll_votes")
+}
+
+enum PollType {
+  single   // одиночный выбор
+  multiple // множественный выбор
+}
 
 enum Role {
   admin

@@ -30,7 +30,7 @@
     font-family: 'DM Sans', sans-serif;
     font-size: 18px;
     font-weight: 600;
-    color: #e2e8f0;
+    color: var(--color-text-secondary);
     margin: 0;
 }
 

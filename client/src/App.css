@@ -5,7 +5,7 @@
 }
 
 body{
-  background-color: rgba(2, 109, 186, 0.25);
+  background-color: var(--color-bg-secondary);
 }
 
 :root {

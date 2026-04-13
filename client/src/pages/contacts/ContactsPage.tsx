@@ -57,7 +57,7 @@ const ContactsPage = () => {
 
     const createDirectChat = async (userId: string) => {
         const res = await ChatService.createChat({ type: 'direct', targetUserId: userId });
-        if (res.data?.id) navigate('/chats');
+        if (res.data?.id) navigate(`/chats?chat_id=${res.data.id}`);
     };
 
     const handleAddByIdentifier = async () => {
@@ -127,7 +127,7 @@ const ContactsPage = () => {
                                 </button>
                             </div>
                         ))}
-                        {!searching && results.length === 0 && query.trim().length > 0 && (
+                        { results.length === 0 && query.trim().length > 0 && (
                             <div className={styles.empty}>Ничего не найдено</div>
                         )}
                     </div>

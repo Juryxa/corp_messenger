@@ -9,6 +9,7 @@ import {ThrottlerGuard, ThrottlerModule} from "@nestjs/throttler";
 import {APP_GUARD} from "@nestjs/core";
 import {UsersModule} from './users/users.module';
 import {SessionModule} from './session/session.module';
+import {PollsModule} from './polls/polls.module';
 
 @Module({
 	imports: [
@@ -18,25 +19,26 @@ import {SessionModule} from './session/session.module';
 		ThrottlerModule.forRoot([
 			{
 				name: 'short',
-				ttl: 1000,   // 1 секунда
-				limit: 3,    // не более 3 запросов
+				ttl: 1000,
+				limit: 3,
 			},
 			{
 				name: 'long',
-				ttl: 60000,  // 1 минута
-				limit: 100,  // не более 100 запросов
+				ttl: 60000,
+				limit: 100,
 			},
 		]),
 		PrismaModule,
 		AuthModule,
 		ChatModule,
 		UsersModule,
-		SessionModule
+		SessionModule,
+		PollsModule
 	],
 	controllers: [AppController],
 	providers: [AppService, {
 		provide: APP_GUARD,
-		useClass: ThrottlerGuard, // применяется ко всем роутам
+		useClass: ThrottlerGuard,
 	},]
 })
 export class AppModule {}

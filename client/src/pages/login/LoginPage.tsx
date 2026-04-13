@@ -77,7 +77,7 @@ export function LoginPage() {
             console.warn('Крипто-ключи не найдены');
         }
 
-        navigate('/home');
+        navigate('/chats');
     };
 
     const validateIdentifier = (value: string) => {

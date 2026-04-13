@@ -8,6 +8,7 @@ export const SOCKET_URL = `http://localhost:5000`;
 export const API_AUTH_SERVICE = `/auth`
 export const API_CHAT_SERVICE = `/chat`
 export const API_USERS_SERVICE = `/users`
+export const API_POLLS_SERVICE = `/polls`
 
 
 const $api = axios.create({

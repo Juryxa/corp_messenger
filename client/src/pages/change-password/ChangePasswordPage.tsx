@@ -67,7 +67,7 @@ export function ChangePasswordPage() {
             // 5. Снимаем флаг isTemporaryPassword
             store.setTemporaryPassword(false);
 
-            navigate('/home');
+            navigate('/chats');
         } catch (e: any) {
             const message = e.response?.data?.message ?? 'Произошла ошибка';
             if (message.toLowerCase().includes('пароль')) {

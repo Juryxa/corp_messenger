@@ -101,10 +101,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             dto.chatId,
             userId,
             dto.encryptedText,
-            dto.encryptedKeySender,
-            dto.encryptedKeyRecipient,
+            {
+                encryptedKeySender: dto.encryptedKeySender,
+                encryptedKeyRecipient: dto.encryptedKeyRecipient,
+                senderPublicKey: dto.senderPublicKey, 
+                groupKeys: dto.groupKeys,
+            },
         );
-
         this.server.to(dto.chatId).emit('newMessage', message);
         return message;
     }

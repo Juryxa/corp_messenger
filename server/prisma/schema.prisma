@@ -18,7 +18,7 @@ model User {
   encryptedPrivateKey String?
   cryptoSalt          String?
 
-  isTemporaryPassword Boolean  @default(false) // нужно ли менять пароль
+  isTemporaryPassword Boolean  @default(false)
 
 
   name    String
@@ -26,11 +26,15 @@ model User {
 
   role             Role
 
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
+
   sessions Session[]
   chatMembers      ChatMember[]
   messages         Message[]
   createdPolls Poll[]
   pollVotes    PollVote[]
+  tasks Task[]
 
   @@map("users")
 }
@@ -83,7 +87,7 @@ model Message {
   encryptedText         String
   encryptedKeyRecipient String?
   encryptedKeySender    String?
-  senderPublicKey       String?  // ← публичный ECDH ключ отправителя
+  senderPublicKey       String?
   groupKeys             MessageGroupKey[]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
@@ -100,7 +104,7 @@ model Message {
 model MessageGroupKey {
   id           String @id @default(uuid(4))
   userId       String
-  encryptedKey String // AES ключ зашифрованный RSA ключом этого юзера
+  encryptedKey String
 
   messageId String
   message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -108,6 +112,24 @@ model MessageGroupKey {
   @@unique([messageId, userId])
   @@map("message_group_keys")
 }
+
+model Task {
+  id          String       @id @default(uuid(4))
+  title       String       @db.VarChar(100)
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  priority    TaskPriority @default(medium)
+  status      TaskStatus   @default(pending)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
 
 model Poll {
   id          String     @id @default(uuid(4))
@@ -159,8 +181,8 @@ model PollVote {
 }
 
 enum PollType {
-  single   // одиночный выбор
-  multiple // множественный выбор
+  single
+  multiple
 }
 
 enum Role {
@@ -180,3 +202,16 @@ enum ChatMemberRole {
   member
 }
 
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum TaskStatus {
+  pending
+  inProgress
+  completed
+  cancelled
+}

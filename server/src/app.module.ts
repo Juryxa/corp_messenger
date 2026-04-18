@@ -10,6 +10,8 @@ import {APP_GUARD} from "@nestjs/core";
 import {UsersModule} from './users/users.module';
 import {SessionModule} from './session/session.module';
 import {PollsModule} from './polls/polls.module';
+import { TasksModule } from './tasks/tasks.module';
+import { TotpModule } from './totp/totp.module';
 
 @Module({
 	imports: [
@@ -33,7 +35,9 @@ import {PollsModule} from './polls/polls.module';
 		ChatModule,
 		UsersModule,
 		SessionModule,
-		PollsModule
+		PollsModule,
+		TasksModule,
+		TotpModule
 	],
 	controllers: [AppController],
 	providers: [AppService, {

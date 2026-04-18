@@ -15,6 +15,7 @@ import {UAParser} from 'ua-parser-js';
 import {SessionService} from "../session/session.service";
 import * as path from 'path';
 import * as fs from 'fs';
+import {TotpService} from "../totp/totp.service";
 
 type Role = 'admin' | 'user';
 
@@ -27,6 +28,7 @@ export class AuthService {
 	constructor(
 		private readonly prismaService: PrismaService,
 		private readonly configService: ConfigService,
+		private readonly totpService: TotpService,
 		private readonly jwtService: JwtService,
 		private readonly sessionService: SessionService,
 	) {
@@ -90,6 +92,8 @@ export class AuthService {
 				password: true,
 				role: true,
 				isTemporaryPassword: true,
+				totpEnabled: true,
+				totpSecret: true,
 			},
 		});
 
@@ -98,13 +102,53 @@ export class AuthService {
 		const isValidPassword = await verify(user.password, password);
 		if (!isValidPassword) throw new NotFoundException('Пользователь не найден');
 
-		const { accessToken } = await this.auth(res, req, user.id, user.role);
+		// Если TOTP включён — не выдаём токены сразу
+		if (user.totpEnabled) {
+			// Выдаём временный токен только для прохождения TOTP шага
+			const tempToken = this.jwtService.sign(
+				{ id: user.id, role: user.role, step: 'totp' },
+				{ expiresIn: '5m', algorithm: 'ES256' },
+			);
+			return { requireTotp: true, tempToken };
+		}
 
-		return {
-			accessToken,
-			user,
-			isTemporaryPassword: user.isTemporaryPassword,
-		};
+		const { accessToken } = await this.auth(res, req, user.id, user.role);
+		return { accessToken, isTemporaryPassword: user.isTemporaryPassword };
+	}
+
+	// Новый метод — второй шаг входа с TOTP кодом
+	async loginTotp(res: Response, req: Request, tempToken: string, code: string) {
+		let payload: any;
+		try {
+			const publicKey = fs.readFileSync(
+				path.resolve(this.configService.getOrThrow('PUBLIC_KEY_PATH')), 'utf8'
+			);
+			payload = await this.jwtService.verifyAsync(tempToken, {
+				publicKey,
+				algorithms: ['ES256'],
+			});
+		} catch {
+			throw new UnauthorizedException('Недействительный временный токен');
+		}
+
+		if (payload.step !== 'totp') {
+			throw new UnauthorizedException('Неверный тип токена');
+		}
+
+		const user = await this.prismaService.user.findUnique({
+			where: { id: payload.id },
+			select: { id: true, role: true, totpSecret: true, totpEnabled: true, isTemporaryPassword: true },
+		});
+
+		if (!user?.totpEnabled || !user.totpSecret) {
+			throw new UnauthorizedException('TOTP не настроен');
+		}
+
+		const isValid = this.totpService.verify(user.totpSecret, code);
+		if (!isValid) throw new UnauthorizedException('Неверный код 2FA');
+
+		const { accessToken } = await this.auth(res, req, user.id, user.role);
+		return { accessToken, user, isTemporaryPassword: user.isTemporaryPassword };
 	}
 
 	// ─── Смена пароля ────────────────────────────────────────────

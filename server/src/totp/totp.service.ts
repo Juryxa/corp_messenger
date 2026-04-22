@@ -58,30 +58,6 @@ export class TotpService {
         return true;
     }
 
-    // Отключение 2FA
-    async disable(userId: string, code: string) {
-        const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { totpSecret: true, totpEnabled: true },
-        });
-
-        if (!user?.totpEnabled) throw new UnauthorizedException('2FA не включена');
-
-        const isValid = await verify({
-            token: code,
-            secret: user.totpSecret!,
-        });
-
-        if (!isValid.valid) throw new UnauthorizedException('Неверный код');
-
-        await this.prisma.user.update({
-            where: { id: userId },
-            data: { totpSecret: null, totpEnabled: false },
-        });
-
-        return true;
-    }
-
     // Проверка кода при входе
     async verify(secret: string, code: string): Promise<boolean> {
         return (await verify({token: code, secret})).valid;

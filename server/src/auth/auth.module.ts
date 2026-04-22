@@ -8,6 +8,7 @@ import {JwtStrategy} from './strategies/jwt.strategy';
 import {PrismaModule} from '../prisma/prisma.module';
 import {SessionGateway} from "../session/session.gateway";
 import {SessionService} from "../session/session.service";
+import {TotpService} from "../totp/totp.service";
 
 @Module({
 	imports: [
@@ -21,7 +22,7 @@ import {SessionService} from "../session/session.service";
 		}),
 	],
 	controllers: [AuthController],
-	providers: [AuthService, JwtStrategy, SessionGateway, SessionService],
+	providers: [AuthService, JwtStrategy, SessionGateway, SessionService, TotpService],
 	exports: [JwtStrategy],
 })
 export class AuthModule {}

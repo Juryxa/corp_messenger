@@ -44,5 +44,16 @@ export default class AuthService {
     static async deleteAllSessionsByUser(userId: string): Promise<AxiosResponse<boolean>> {
         return $api.delete<boolean>(`${API_AUTH_SERVICE}/sessions/user/${userId}`);
     }
+    static async loginTotp(tempToken: string, code: string): Promise<AxiosResponse<AuthResponse>> {
+        return axios.post(`${API_URL}${API_AUTH_SERVICE}/login/totp`, { tempToken, code }, { withCredentials: true });
+    }
+
+    static async setupTotp(): Promise<AxiosResponse<{ secret: string; qrCodeDataUrl: string }>> {
+        return $api.post('/totp/setup');
+    }
+
+    static async confirmTotp(code: string): Promise<AxiosResponse<boolean>> {
+        return $api.post('/totp/confirm', { code });
+    }
 }
 

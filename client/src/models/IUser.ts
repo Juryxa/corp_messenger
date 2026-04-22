@@ -1,4 +1,5 @@
 export interface IUser {
+    totpEnabled: boolean;
     email: string;
     id: string;
     employee_Id: number;

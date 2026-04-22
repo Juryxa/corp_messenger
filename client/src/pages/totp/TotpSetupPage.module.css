@@ -1,0 +1,581 @@
+.root {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #060810;
+    padding: 20px;
+}
+
+/* ─── Background ──────────────────────────────────────────────── */
+
+.bg {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.bgGlow1 {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(79,142,247,0.12) 0%, transparent 70%);
+    top: -200px;
+    right: -100px;
+}
+
+.bgGlow2 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(160,111,216,0.08) 0%, transparent 70%);
+    bottom: -150px;
+    left: -100px;
+}
+
+.bgGrid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(79,142,247,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79,142,247,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
+}
+
+/* ─── Card ────────────────────────────────────────────────────── */
+
+.card {
+    position: relative;
+    z-index: 1;
+    background: rgba(12, 14, 22, 0.95);
+    border: 1px solid rgba(79,142,247,0.15);
+    border-radius: 20px;
+    padding: 40px;
+    width: 100%;
+    max-width: 480px;
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 32px 80px rgba(0,0,0,0.6),
+        0 0 60px rgba(79,142,247,0.05);
+}
+
+/* ─── Progress ────────────────────────────────────────────────── */
+
+.progress {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 36px;
+    gap: 0;
+}
+
+.progressStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.35;
+    transition: opacity 0.3s;
+}
+
+.progressStepDone { opacity: 1; }
+
+.progressNum {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(79,142,247,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--color-primary, #4f8ef7);
+    background: rgba(79,142,247,0.08);
+    transition: all 0.3s;
+}
+
+.progressStepDone .progressNum {
+    border-color: var(--color-primary, #4f8ef7);
+    background: rgba(79,142,247,0.18);
+}
+
+.progressLabel {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10.5px;
+    color: var(--color-text-muted, #5a6480);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.progressLine {
+    width: 48px;
+    height: 1px;
+    background: rgba(79,142,247,0.15);
+    margin: 0 4px;
+    margin-bottom: 22px;
+    transition: background 0.3s;
+}
+
+.progressLineDone { background: rgba(79,142,247,0.5); }
+
+/* ─── Icon badge ──────────────────────────────────────────────── */
+
+.iconBadge {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    background: rgba(79,142,247,0.1);
+    border: 1px solid rgba(79,142,247,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-primary, #4f8ef7);
+    margin: 0 auto 24px;
+}
+
+.iconBadge svg { width: 28px; height: 28px; }
+
+/* ─── Typography ──────────────────────────────────────────────── */
+
+.title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #e2e8f0;
+    text-align: center;
+    margin: 0 0 10px;
+    line-height: 1.3;
+}
+
+.subtitle {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    color: var(--color-text-muted, #5a6480);
+    text-align: center;
+    line-height: 1.65;
+    margin: 0 0 28px;
+}
+
+/* ─── QR code ─────────────────────────────────────────────────── */
+
+.qrWrap {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    margin: 0 auto 24px;
+    padding: 12px;
+    background: #fff;
+    border-radius: 12px;
+}
+
+.qrImage {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.qrSkeleton {
+    width: 100%;
+    height: 100%;
+    background: #e5e7eb;
+    border-radius: 4px;
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+}
+
+.qrCorner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: var(--color-primary, #4f8ef7);
+    border-style: solid;
+    border-width: 0;
+}
+
+.qrCorner:nth-child(2) { border-top-width: 2px; border-left-width: 2px; border-radius: 4px 0 0 0; top: -1px !important; left: -1px !important; }
+.qrCorner:nth-child(3) { border-top-width: 2px; border-right-width: 2px; border-radius: 0 4px 0 0; top: -1px !important; right: -1px !important; }
+.qrCorner:nth-child(4) { border-bottom-width: 2px; border-left-width: 2px; border-radius: 0 0 0 4px; bottom: -1px !important; left: -1px !important; }
+.qrCorner:nth-child(5) { border-bottom-width: 2px; border-right-width: 2px; border-radius: 0 0 4px 0; bottom: -1px !important; right: -1px !important; }
+
+/* ─── Secret ──────────────────────────────────────────────────── */
+
+.secretBlock {
+    background: rgba(8,10,15,0.8);
+    border: 1px solid rgba(79,142,247,0.12);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.secretLabel {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--color-text-muted, #5a6480);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.secretRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.secretCode {
+    flex: 1;
+    font-family: 'DM Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--color-primary, #4f8ef7);
+    letter-spacing: 0.12em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.secretBtn {
+    width: 30px;
+    height: 30px;
+    background: transparent;
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 7px;
+    color: var(--color-text-muted, #5a6480);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.secretBtn:hover { border-color: var(--color-primary, #4f8ef7); color: var(--color-primary, #4f8ef7); }
+.secretBtn svg { width: 13px; height: 13px; }
+
+/* ─── App hints ───────────────────────────────────────────────── */
+
+.appHints {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 24px;
+}
+
+.appHintsLabel {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    color: var(--color-text-muted, #5a6480);
+}
+
+.appList {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.appItem {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: #3a4455;
+}
+
+.appDot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: #2a3050;
+}
+
+/* ─── Code input ──────────────────────────────────────────────── */
+
+.codeInputWrap {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.codeInput {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+    width: 1px;
+    height: 1px;
+}
+
+.codeSegments {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    cursor: text;
+}
+
+.codeSegment {
+    width: 48px;
+    height: 58px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(79,142,247,0.15);
+    background: rgba(8,10,15,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'DM Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    color: #e2e8f0;
+    transition: all 0.15s;
+    user-select: none;
+    position: relative;
+}
+
+.codeSegmentFilled {
+    border-color: rgba(79,142,247,0.4);
+    background: rgba(79,142,247,0.06);
+}
+
+.codeSegmentActive {
+    border-color: var(--color-primary, #4f8ef7);
+    box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+}
+
+.codeSegmentActive::after {
+    content: '';
+    position: absolute;
+    width: 1.5px;
+    height: 28px;
+    background: var(--color-primary, #4f8ef7);
+    border-radius: 1px;
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Invisible input overlay for keyboard */
+.codeInputWrap::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    cursor: text;
+    z-index: 1;
+}
+
+/* Make real input overlay clickable */
+.codeInput {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: text;
+    font-size: 0;
+    pointer-events: all;
+    z-index: 2;
+}
+
+.codeInputError + .codeSegments .codeSegmentFilled {
+    border-color: rgba(224,92,106,0.5);
+    background: rgba(224,92,106,0.06);
+}
+
+.codeInputWrap {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+    cursor: text;
+}
+
+/* Скрытый реальный input — абсолютно позиционирован поверх сегментов */
+.codeInput {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: text;
+    z-index: 10;
+    font-size: 16px; /* важно для iOS чтобы не зумил */
+    border: none;
+    background: transparent;
+    outline: none;
+    /* pointer-events: all — обязательно! */
+    pointer-events: all;
+}
+
+.codeSegments {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    /* pointer-events: none чтобы клики проходили сквозь на input */
+    pointer-events: none;
+}
+
+/* ─── Error banner ────────────────────────────────────────────── */
+
+.errorBanner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(224,92,106,0.08);
+    border: 1px solid rgba(224,92,106,0.2);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--color-danger, #e05c6a);
+    margin-bottom: 16px;
+}
+.errorBanner svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+/* ─── Buttons ─────────────────────────────────────────────────── */
+
+.btnRow {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.primaryBtn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 20px;
+    background: var(--color-primary, #4f8ef7);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s, transform 0.1s;
+}
+.primaryBtn:hover { background: var(--color-primary-hover, #3a7de0); }
+.primaryBtn:active { transform: scale(0.98); }
+.primaryBtn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.primaryBtn svg { width: 16px; height: 16px; }
+
+.ghostBtn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 13px 16px;
+    background: transparent;
+    border: 1px solid rgba(79,142,247,0.2);
+    border-radius: 10px;
+    color: var(--color-text-muted, #5a6480);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.ghostBtn:hover { border-color: rgba(79,142,247,0.4); color: #e2e8f0; }
+.ghostBtn svg { width: 16px; height: 16px; }
+
+/* ─── Done step ───────────────────────────────────────────────── */
+
+.doneStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0;
+}
+
+.doneIcon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(74,222,128,0.1);
+    border: 1.5px solid rgba(74,222,128,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-success, #4ade80);
+    margin-bottom: 24px;
+    animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.doneIcon svg { width: 30px; height: 30px; stroke-width: 2.5; }
+
+.doneNote {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(74,222,128,0.06);
+    border: 1px solid rgba(74,222,128,0.15);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--color-success, #4ade80);
+    margin: 20px 0 28px;
+    width: 100%;
+}
+.doneNote svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+/* ─── Spinners ────────────────────────────────────────────────── */
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 2.5px solid rgba(79,142,247,0.15);
+    border-top-color: var(--color-primary, #4f8ef7);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto 16px;
+}
+
+.btnSpinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loadingState {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 0;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--color-text-muted, #5a6480);
+}
+
+/* ─── Confirm step ────────────────────────────────────────────── */
+
+.confirmStep, .scanStep {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}

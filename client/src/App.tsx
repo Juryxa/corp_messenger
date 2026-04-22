@@ -1,6 +1,6 @@
 import {Navigate, Route, Routes} from 'react-router-dom';
 import {observer} from 'mobx-react-lite';
-import {useContext, useEffect, useState} from 'react';
+import {useContext, useEffect} from 'react';
 import {Context} from './main';
 import ChatsPage from './pages/chats/ChatsPage';
 import CalendarPage from './pages/calendar/CalendarPage';
@@ -13,39 +13,57 @@ import {ChangePasswordPage} from './pages/change-password/ChangePasswordPage';
 import {SessionsPage} from './pages/session/SessionsPage';
 import {AdminRegisterPage} from './pages/admin/AdminRegisterPage';
 import {RestoreKeyPage} from './components/RestoreKeyPage';
-
+import {TotpPage} from "./pages/totp/TotpPage";
+import {TotpSetupPage} from "./pages/totp/TotpSetupPage";
 
 const App = observer(() => {
-    const {store} = useContext(Context);
-    const [needsKeyRestore, setNeedsKeyRestore] = useState(false);
+    const { store } = useContext(Context);
 
+    // Первичная проверка при загрузке приложения
     useEffect(() => {
         store.checkAuth().then(() => {
-            const hasKey = !!sessionStorage.getItem('privateKey');
-            if (store.isAuth && !hasKey && !store.isTemporaryPassword) {
-                setNeedsKeyRestore(true);
+            if (store.isAuth && !store.isTemporaryPassword && !store.isAwaitingTotp) {
+                const hasKey = !!sessionStorage.getItem('privateKey');
+                store.setNeedsKeyRestore(!hasKey);
             }
         });
     }, []);
 
+    // Обновляем needsKeyRestore при изменении важных состояний
+    useEffect(() => {
+        if (store.isAuth &&
+            !store.isTemporaryPassword &&
+            !store.isAwaitingTotp &&
+            !store.requireTotpSetup) {
 
-    if (store.isAuth && needsKeyRestore) {
-        return <RestoreKeyPage onRestored={() => setNeedsKeyRestore(false)}/>;
-    }
+            const hasKey = !!sessionStorage.getItem('privateKey');
+            store.setNeedsKeyRestore(!hasKey);
+        }
+    }, [store.isAuth, store.isTemporaryPassword, store.isAwaitingTotp, store.requireTotpSetup]);
 
-
+    // ─── Приоритет проверок ───
     if (store.isLoading) {
         return <div>Загрузка...</div>;
     }
 
+    if (store.isAwaitingTotp) {
+        return <TotpPage />;
+    }
 
     if (store.isAuth && store.isTemporaryPassword) {
-        return <ChangePasswordPage/>;
+        return <ChangePasswordPage />;
+    }
+
+    if (store.isAuth && store.requireTotpSetup) {
+        return <TotpSetupPage />;
+    }
+
+    if (store.isAuth && store.needsKeyRestore) {
+        return <RestoreKeyPage onRestored={() => store.setNeedsKeyRestore(false)} />;
     }
 
     return (
         <Routes>
-
             <Route path="/login" element={store.isAuth ? <Navigate to="/chats" replace/> : <LoginPage/>}/>
 
             {store.isAuth ? (
@@ -62,7 +80,6 @@ const App = observer(() => {
             ) : (
                 <Route path="*" element={<Navigate to="/login" replace/>}/>
             )}
-
         </Routes>
     );
 });

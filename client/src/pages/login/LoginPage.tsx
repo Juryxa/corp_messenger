@@ -2,9 +2,7 @@ import {useContext, useState} from 'react';
 import {useForm} from 'react-hook-form';
 import {Context} from '../../main';
 import styles from './LoginPage.module.css';
-import {useNavigate} from 'react-router-dom';
-import {useCrypto} from '../../hooks/crypto-hooks/useCrypto';
-import UsersService from "../../services/UsersService";
+
 
 interface LoginFormData {
     identifier: string;
@@ -21,9 +19,8 @@ function isEmployeeId(value: string): boolean {
 
 export function LoginPage() {
     const { store } = useContext(Context);
-    const navigate = useNavigate();
     const [serverError, setServerError] = useState<string | null>(null);
-    const { decryptPrivateKey, exportPrivateKey, savePrivateKeyToSession } = useCrypto();
+
 
 
     const {
@@ -36,10 +33,10 @@ export function LoginPage() {
         const { identifier, password } = data;
         setServerError(null);
 
-        // 1. Логинимся
         let error: string | undefined;
+
         if (isEmail(identifier)) {
-            error = await store.login(password, identifier, undefined);
+            error = await store.login(password, identifier);
         } else if (isEmployeeId(identifier)) {
             error = await store.login(password, undefined, Number(identifier));
         }
@@ -49,36 +46,10 @@ export function LoginPage() {
             return;
         }
 
-        if (!store.isAuth) return;
-
-        // 2. Если временный пароль — редиректим на смену, ключи ещё не генерировались
-        if (store.isTemporaryPassword) {
-            navigate('/change-password');
+        if (store.isAwaitingTotp) {
             return;
         }
-
-        // 3. Загружаем зашифрованный приватный ключ и соль с сервера
-        try {
-            const [keysRes, saltRes] = await Promise.all([
-                UsersService.getEncryptedPrivateKey(),
-                UsersService.getCryptoSalt(),
-            ]);
-
-            const privateKey = await decryptPrivateKey(
-                keysRes.data.encryptedPrivateKey,
-                password,
-                saltRes.data.cryptoSalt,
-            );
-
-            const privateKeyBase64 = await exportPrivateKey(privateKey);
-            savePrivateKeyToSession(privateKeyBase64);
-        } catch {
-            // Ключи ещё не созданы — не критично, просто идём дальше
-            console.warn('Крипто-ключи не найдены');
-        }
-
-        navigate('/chats');
-    };
+    }
 
     const validateIdentifier = (value: string) => {
         if (!value.trim()) return 'Введите email или ID работника';

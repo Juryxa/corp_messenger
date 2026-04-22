@@ -33,6 +33,7 @@ import {AuthResponse} from './dto/auth.dto';
 import {SkipThrottle, Throttle} from '@nestjs/throttler';
 import {CurrentUser} from '../users/decorators/current-user.decorator';
 import {AdminAuthorization, Authorization} from './decorators/authorization.decorator';
+import {LoginTotpDto} from "./dto/loginTOTP.dto";
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -101,6 +102,23 @@ export class AuthController {
         @Body() dto: LoginRequest,
     ) {
         return this.authService.login(res, req, dto);
+    }
+
+    @ApiOperation({
+        summary: 'Второй шаг входа — проверка TOTP кода',
+        description: 'Вызывается если после /login пришёл ответ { requireTotp: true, tempToken }. Принимает временный токен и 6-значный код из приложения аутентификатора.',
+    })
+    @ApiOkResponse({ type: AuthResponse, description: 'Успешный вход — возвращает accessToken' })
+    @ApiUnauthorizedResponse({ description: 'Неверный код или истёкший временный токен' })
+    @Post('login/totp')
+    @SkipThrottle()
+    @HttpCode(HttpStatus.OK)
+    async loginTotp(
+        @Body() dto: LoginTotpDto,
+        @Req() req: Request,
+        @Res({ passthrough: true }) res: Response,
+    ) {
+        return this.authService.loginTotp(res, req, dto.tempToken, dto.code);
     }
 
     // ─── Обновление токена ───────────────────────────────────────

@@ -14,37 +14,40 @@ interface ChangePasswordFormData {
 }
 
 export function ChangePasswordPage() {
-    const { store } = useContext(Context);
+    const {store} = useContext(Context);
     const navigate = useNavigate();
-    const { generateKeyPair, exportPublicKey, exportPrivateKey, encryptPrivateKey, savePrivateKeyToSession } = useCrypto();
+    const {
+        generateKeyPair,
+        exportPublicKey,
+        exportPrivateKey,
+        encryptPrivateKey,
+        savePrivateKeyToSession
+    } = useCrypto();
 
     const {
         register,
         handleSubmit,
         watch,
         setError,
-        formState: { errors, isSubmitting },
-    } = useForm<ChangePasswordFormData>({ mode: 'onTouched' });
+        formState: {errors, isSubmitting},
+    } = useForm<ChangePasswordFormData>({mode: 'onTouched'});
 
     const newPassword = watch('newPassword');
 
     const onSubmit = async (data: ChangePasswordFormData) => {
         try {
-            // 1. Меняем пароль
             const response = await AuthService.changePassword({
                 oldPassword: data.oldPassword,
                 newPassword: data.newPassword,
             });
 
-            // Обновляем токен
-            localStorage.setItem('token', response.data.accessToken);
+            localStorage.setItem('token', response.data.accessToken!);
 
-            // 2. Генерируем крипто-ключи
+            // 2. Генерируем крипто-ключи (как было)
             const keyPair = await generateKeyPair();
             const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
             const privateKeyBase64 = await exportPrivateKey(keyPair.privateKey);
 
-            // Генерируем соль
             const saltArray = window.crypto.getRandomValues(new Uint8Array(32));
             const cryptoSalt = btoa(String.fromCharCode(...saltArray));
 
@@ -54,26 +57,27 @@ export function ChangePasswordPage() {
                 cryptoSalt,
             );
 
-            // 3. Сохраняем ключи на сервере
-            await UsersService.saveKeys({
-                publicKey: publicKeyBase64,
-                encryptedPrivateKey,
-                cryptoSalt,
-            });
-
-            // 4. Кэшируем приватный ключ в sessionStorage
+            await UsersService.saveKeys({ publicKey: publicKeyBase64, encryptedPrivateKey, cryptoSalt });
             savePrivateKeyToSession(privateKeyBase64);
 
-            // 5. Снимаем флаг isTemporaryPassword
+            // 3. Снимаем temporary флаг
             store.setTemporaryPassword(false);
+            store.markKeysAsLoaded();
 
+            // 4. Если сервер сказал, что нужна настройка TOTP — ставим флаг
+            //    App.tsx сам покажет TotpSetupPage
+            if (response.data.requireTotpSetup) {
+                store.setRequireTotpSetup(true);
+                // НЕ navigate — App сам перерендерится
+                return;
+            }
             navigate('/chats');
         } catch (e: any) {
             const message = e.response?.data?.message ?? 'Произошла ошибка';
             if (message.toLowerCase().includes('пароль')) {
-                setError('oldPassword', { message });
+                setError('oldPassword', {message});
             } else {
-                setError('root', { message });
+                setError('root', {message});
             }
         }
     };
@@ -100,14 +104,14 @@ export function ChangePasswordPage() {
                             type="password"
                             className={`${styles.input} ${errors.oldPassword ? styles.inputError : ''}`}
                             placeholder="Введите временный пароль"
-                            {...register('oldPassword', { required: 'Введите временный пароль' })}
+                            {...register('oldPassword', {required: 'Введите временный пароль'})}
                         />
                         {errors.oldPassword && (
                             <span className={styles.error}>{errors.oldPassword.message}</span>
                         )}
                     </div>
 
-                    <div className={styles.divider} />
+                    <div className={styles.divider}/>
 
                     <div className={styles.field}>
                         <label className={styles.label}>Новый пароль</label>
@@ -117,8 +121,8 @@ export function ChangePasswordPage() {
                             placeholder="Минимум 8 символов"
                             {...register('newPassword', {
                                 required: 'Введите новый пароль',
-                                minLength: { value: 8, message: 'Минимум 8 символов' },
-                                maxLength: { value: 128, message: 'Максимум 128 символов' },
+                                minLength: {value: 8, message: 'Минимум 8 символов'},
+                                maxLength: {value: 128, message: 'Максимум 128 символов'},
                             })}
                         />
                         {errors.newPassword && (

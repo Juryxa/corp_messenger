@@ -17,6 +17,29 @@ export default class Store {
     isAuth = false;
     isLoading = true;
     isTemporaryPassword = false;
+    isAwaitingTotp = false;
+    tempToken: string | null = null;
+    requireTotpSetup = false;
+    needsKeyRestore = false;
+
+    setNeedsKeyRestore(bool: boolean) {
+        this.needsKeyRestore = bool;
+    }
+    markKeysAsLoaded() {
+        this.needsKeyRestore = false;
+    }
+
+    setAwaitingTotp(bool: boolean) {
+        this.isAwaitingTotp = bool;
+    }
+
+    setTempToken(token: string | null) {
+        this.tempToken = token;
+    }
+
+    setRequireTotpSetup(bool: boolean) {
+        this.requireTotpSetup = bool;
+    }
 
 
     constructor() {
@@ -42,14 +65,49 @@ export default class Store {
     async login(password: string, email?: string, employeeId?: number) {
         try {
             const response = await AuthService.login(password, email, employeeId);
-            localStorage.setItem('token', response.data.accessToken);
+            if (response.data.requireTotp && response.data.tempToken) {
+                this.setTempToken(response.data.tempToken);
+                this.setAwaitingTotp(true);
+                return;
+            }
+            localStorage.setItem('token', response.data.accessToken!);
             this.setAuth(true);
-            this.setUser(response.data.user);
-            this.setTemporaryPassword(response.data.isTemporaryPassword);
+            this.setUser(response.data.user!);
+            this.setTemporaryPassword(response.data.isTemporaryPassword ?? false);
+            this.setAwaitingTotp(false);
+            this.setTempToken(null);
             this.reconnectSessionSocket();
         } catch (e) {
             const error = e as AxiosError<{ message: string }>;
             return error.response?.data?.message;
+        }
+    }
+
+    async submitTotp(code: string) {
+        try {
+            const response = await AuthService.loginTotp(this.tempToken!, code);
+
+            if (!response.data.accessToken) {
+                throw new Error('Не получен accessToken');
+            }
+
+            localStorage.setItem('token', response.data.accessToken);
+            this.setAwaitingTotp(false);
+            this.setTempToken(null);
+            this.setAuth(true);
+            this.setUser(response.data.user!);
+            this.setTemporaryPassword(response.data.isTemporaryPassword ?? false);
+            this.markKeysAsLoaded();
+
+            // Небольшая задержка, чтобы MobX и Router успели отреагировать
+            setTimeout(() => {
+                this.reconnectSessionSocket();
+            }, 50);
+
+            return undefined;
+        } catch (e) {
+            const error = e as AxiosError<{ message: string }>;
+            return error.response?.data?.message || 'Неверный код 2FA';
         }
     }
 
@@ -106,10 +164,14 @@ export default class Store {
         this.setLoading(true);
         try {
             const response = await AuthService.refresh();
-            localStorage.setItem('token', response.data.accessToken);
-            this.setAuth(true);
-            this.setUser(response.data.user);
-            this.reconnectSessionSocket();
+            if (response.data.accessToken !== undefined && response.data.user !== undefined) {
+                localStorage.setItem('token', response.data.accessToken);
+                this.setAuth(true);
+                this.setUser(response.data.user);
+                // Если TOTP включён но ключа нет в session — это нормально, RestoreKeyPage справится
+                // Но если пользователь вошёл через refresh — TOTP уже был пройден ранее, всё ок
+                this.reconnectSessionSocket();
+            }
         } catch (e) {
             this.setAuth(false);
             const error = e as AxiosError<{ message: string }>;

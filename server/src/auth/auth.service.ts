@@ -21,368 +21,392 @@ type Role = 'admin' | 'user';
 
 @Injectable()
 export class AuthService {
-	private readonly JWT_ACCESS_TOKEN_TTL: StringValue;
-	private readonly JWT_REFRESH_TOKEN_TTL: StringValue;
-	private readonly COOKIE_DOMAIN: string;
+    private readonly JWT_ACCESS_TOKEN_TTL: StringValue;
+    private readonly JWT_REFRESH_TOKEN_TTL: StringValue;
+    private readonly COOKIE_DOMAIN: string;
 
-	constructor(
-		private readonly prismaService: PrismaService,
-		private readonly configService: ConfigService,
-		private readonly totpService: TotpService,
-		private readonly jwtService: JwtService,
-		private readonly sessionService: SessionService,
-	) {
-		this.JWT_ACCESS_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_ACCESS_TOKEN_TTL');
-		this.JWT_REFRESH_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_REFRESH_TOKEN_TTL');
-		this.COOKIE_DOMAIN = configService.getOrThrow<string>('COOKIE_DOMAIN');
-	}
+    constructor(
+        private readonly prismaService: PrismaService,
+        private readonly configService: ConfigService,
+        private readonly totpService: TotpService,
+        private readonly jwtService: JwtService,
+        private readonly sessionService: SessionService,
+    ) {
+        this.JWT_ACCESS_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_ACCESS_TOKEN_TTL');
+        this.JWT_REFRESH_TOKEN_TTL = configService.getOrThrow<StringValue>('JWT_REFRESH_TOKEN_TTL');
+        this.COOKIE_DOMAIN = configService.getOrThrow<string>('COOKIE_DOMAIN');
+    }
 
-	// ─── Регистрация ─────────────────────────────────────────────
+    // ─── Регистрация ─────────────────────────────────────────────
 
-	async register(dto: RegisterRequest) {
-		const { name, surname, email, role, employee_Id } = dto;
+    async register(dto: RegisterRequest) {
+        const {name, surname, email, role, employee_Id} = dto;
 
-		const [existEmail, existId] = await Promise.all([
-			this.prismaService.user.findUnique({ where: { email } }),
-			this.prismaService.user.findUnique({ where: { employee_Id } }),
-		]);
+        const [existEmail, existId] = await Promise.all([
+            this.prismaService.user.findUnique({where: {email}}),
+            this.prismaService.user.findUnique({where: {employee_Id}}),
+        ]);
 
-		if (existEmail) throw new ConflictException('Пользователь с таким email существует');
-		if (existId) throw new ConflictException('Пользователь с таким ID существует');
+        if (existEmail) throw new ConflictException('Пользователь с таким email существует');
+        if (existId) throw new ConflictException('Пользователь с таким ID существует');
 
-		const temporaryPassword = randomBytes(6).toString('hex');
+        const temporaryPassword = randomBytes(6).toString('hex');
 
-		const user = await this.prismaService.user.create({
-			data: {
-				name,
-				surname,
-				email,
-				password: await hash(temporaryPassword),
-				employee_Id,
-				role,
-				isTemporaryPassword: true,
-			},
-		});
+        const user = await this.prismaService.user.create({
+            data: {
+                name,
+                surname,
+                email,
+                password: await hash(temporaryPassword),
+                employee_Id,
+                role,
+                isTemporaryPassword: true,
+            },
+        });
 
-		return {
-			userId: user.id,
-			temporaryPassword,
-			name,
-			surname,
-			email,
-			employee_Id,
-			role,
-			message: 'Передайте этот пароль сотруднику. Он будет действителен до первого входа.',
-		};
-	}
+        return {
+            userId: user.id,
+            temporaryPassword,
+            name,
+            surname,
+            email,
+            employee_Id,
+            role,
+            message: 'Передайте этот пароль сотруднику. Он будет действителен до первого входа.',
+        };
+    }
 
-	// ─── Логин ───────────────────────────────────────────────────
+    // ─── Логин ───────────────────────────────────────────────────
 
-	async login(res: Response, req: Request, dto: LoginRequest) {
-		const { email, password, employee_Id } = dto;
+    async login(res: Response, req: Request, dto: LoginRequest) {
+        const {email, password, employee_Id} = dto;
 
-		const where: { email?: string; employee_Id?: number }[] = [];
-		if (email) where.push({ email });
-		if (employee_Id) where.push({ employee_Id });
+        const where: { email?: string; employee_Id?: number }[] = [];
+        if (email) where.push({email});
+        if (employee_Id) where.push({employee_Id});
 
-		const user = await this.prismaService.user.findFirst({
-			where: { OR: where },
-			select: {
-				id: true,
-				password: true,
-				role: true,
-				isTemporaryPassword: true,
-				totpEnabled: true,
-				totpSecret: true,
-			},
-		});
+        const user = await this.prismaService.user.findFirst({
+            where: {OR: where},
+            select: {
+                id: true,
+                password: true,
+                role: true,
+                isTemporaryPassword: true,
+                totpEnabled: true,
+                totpSecret: true,
+            },
+        });
 
-		if (!user) throw new NotFoundException('Пользователь не найден');
+        if (!user) throw new NotFoundException('Пользователь не найден');
 
-		const isValidPassword = await verify(user.password, password);
-		if (!isValidPassword) throw new NotFoundException('Пользователь не найден');
+        const isValidPassword = await verify(user.password, password);
+        if (!isValidPassword) throw new NotFoundException('Пользователь не найден');
 
-		// Если TOTP включён — не выдаём токены сразу
-		if (user.totpEnabled) {
-			// Выдаём временный токен только для прохождения TOTP шага
-			const tempToken = this.jwtService.sign(
-				{ id: user.id, role: user.role, step: 'totp' },
-				{ expiresIn: '5m', algorithm: 'ES256' },
-			);
-			return { requireTotp: true, tempToken };
-		}
+        // TOTP включён → второй шаг
+        if (user.totpEnabled) {
+            // ✅ Исправлено: подписываем tempToken вручную, как все остальные токены
+            const privateKey = fs.readFileSync(
+                path.resolve(this.configService.getOrThrow('PRIVATE_KEY_PATH')),
+                'utf8'
+            );
 
-		const { accessToken } = await this.auth(res, req, user.id, user.role);
-		return { accessToken, isTemporaryPassword: user.isTemporaryPassword };
-	}
+            const tempToken = this.jwtService.sign(
+                {id: user.id, role: user.role, step: 'totp'},
+                {
+                    privateKey,
+                    algorithm: 'ES256',
+                    expiresIn: '5m',
+                }
+            );
 
-	// Новый метод — второй шаг входа с TOTP кодом
-	async loginTotp(res: Response, req: Request, tempToken: string, code: string) {
-		let payload: any;
-		try {
-			const publicKey = fs.readFileSync(
-				path.resolve(this.configService.getOrThrow('PUBLIC_KEY_PATH')), 'utf8'
-			);
-			payload = await this.jwtService.verifyAsync(tempToken, {
-				publicKey,
-				algorithms: ['ES256'],
-			});
-		} catch {
-			throw new UnauthorizedException('Недействительный временный токен');
-		}
+            return {requireTotp: true, tempToken};
+        }
 
-		if (payload.step !== 'totp') {
-			throw new UnauthorizedException('Неверный тип токена');
-		}
+        const result = await this.auth(res, req, user.id, user.role);
+        return {
+            accessToken: result.accessToken,
+            isTemporaryPassword: user.isTemporaryPassword,
+            user: result.user,
+        };
+    }
 
-		const user = await this.prismaService.user.findUnique({
-			where: { id: payload.id },
-			select: { id: true, role: true, totpSecret: true, totpEnabled: true, isTemporaryPassword: true },
-		});
+    // Новый метод — второй шаг входа с TOTP кодом
+    async loginTotp(res: Response, req: Request, tempToken: string, code: string) {
+        let payload: any;
+        try {
+            const publicKey = fs.readFileSync(
+                path.resolve(this.configService.getOrThrow('PUBLIC_KEY_PATH')), 'utf8'
+            );
+            payload = await this.jwtService.verifyAsync(tempToken, {
+                publicKey,
+                algorithms: ['ES256'],
+            });
+        } catch {
+            throw new UnauthorizedException('Недействительный временный токен');
+        }
 
-		if (!user?.totpEnabled || !user.totpSecret) {
-			throw new UnauthorizedException('TOTP не настроен');
-		}
+        if (payload.step !== 'totp') {
+            throw new UnauthorizedException('Неверный тип токена');
+        }
 
-		const isValid = this.totpService.verify(user.totpSecret, code);
-		if (!isValid) throw new UnauthorizedException('Неверный код 2FA');
+        const user = await this.prismaService.user.findUnique({
+            where: {id: payload.id},
+            select: {id: true, role: true, totpSecret: true, totpEnabled: true, isTemporaryPassword: true},
+        });
 
-		const { accessToken } = await this.auth(res, req, user.id, user.role);
-		return { accessToken, user, isTemporaryPassword: user.isTemporaryPassword };
-	}
+        if (!user?.totpEnabled || !user.totpSecret) {
+            throw new UnauthorizedException('TOTP не настроен');
+        }
 
-	// ─── Смена пароля ────────────────────────────────────────────
+        const isValid = await this.totpService.verify(user.totpSecret, code);
+        if (!isValid) throw new UnauthorizedException('Неверный код 2FA');
 
-	async changePassword(
-		userId: string,
-		oldPassword: string,
-		newPassword: string,
-		res: Response,
-		req: Request,
-	) {
-		const user = await this.prismaService.user.findUnique({
-			where: { id: userId },
-			select: { password: true, role: true },
-		});
+        const result = await this.auth(res, req, user.id, user.role);
 
-		if (!user) throw new NotFoundException('Пользователь не найден');
+        return {
+            accessToken: result.accessToken,
+            isTemporaryPassword: user.isTemporaryPassword,
+            user: result.user,                   // ← добавлено
+        };
+    }
 
-		const isValid = await verify(user.password, oldPassword);
-		if (!isValid) throw new UnauthorizedException('Неверный текущий пароль');
+    // ─── Смена пароля ────────────────────────────────────────────
 
-		const currentRefreshToken = req.cookies['refreshToken'];
+    async changePassword(
+        userId: string,
+        oldPassword: string,
+        newPassword: string,
+        res: Response,
+        req: Request,
+    ) {
+        const userBefore = await this.prismaService.user.findUnique({
+            where: {id: userId},
+            select: {password: true, role: true, isTemporaryPassword: true, totpEnabled: true},
+        });
 
-		// Инвалидируем все сессии кроме текущей
-		await this.prismaService.session.deleteMany({
-			where: {
-				userId,
-				refreshToken: { not: currentRefreshToken },
-			},
-		});
+        if (!userBefore) throw new NotFoundException('Пользователь не найден');
 
-		await this.prismaService.user.update({
-			where: { id: userId },
-			data: {
-				password: await hash(newPassword),
-				isTemporaryPassword: false,
-			},
-		});
+        const isValid = await verify(userBefore.password, oldPassword);
+        if (!isValid) throw new UnauthorizedException('Неверный текущий пароль');
 
-		return this.auth(res, req, userId, user.role);
-	}
+        const currentRefreshToken = req.cookies['refreshToken'];
 
-	// ─── Обновление токена ───────────────────────────────────────
+        await this.prismaService.session.deleteMany({
+            where: {userId, refreshToken: {not: currentRefreshToken}},
+        });
 
-	async refresh(req: Request, res: Response) {
-		const refreshToken = req.cookies['refreshToken'];
-		if (!refreshToken) throw new UnauthorizedException('Недействительный refresh токен');
+        await this.prismaService.user.update({
+            where: {id: userId},
+            data: {
+                password: await hash(newPassword),
+                isTemporaryPassword: false,
+            },
+        });
 
-		const session = await this.prismaService.session.findUnique({
-			where: { refreshToken },
-			include: { user: { select: { id: true, role: true } } },
-		});
+        const result = await this.auth(res, req, userId, userBefore.role);
 
-		// Сессия не найдена или истекла
-		if (!session) throw new UnauthorizedException('Сессия истекла');
+        // Требуем настройку TOTP ТОЛЬКО у новых пользователей (первый вход)
+        const requireTotpSetup = userBefore.isTemporaryPassword && !userBefore.totpEnabled;
 
-		if (session.expiresAt < new Date()) {
-			await this.prismaService.session.deleteMany({ where: { refreshToken } });
-			throw new UnauthorizedException('Сессия истекла');
-		}
+        return {
+            accessToken: result.accessToken,
+            user: result.user,
+            requireTotpSetup,          // ← теперь условно
+        };
+    }
 
-		// Ротация — удаляем старую сессию, создаём новую
-		await this.prismaService.session.deleteMany({ where: { refreshToken } });
+    // ─── Обновление токена ───────────────────────────────────────
 
-		return this.auth(res, req, session.user.id, session.user.role);
-	}
+    async refresh(req: Request, res: Response) {
+        const refreshToken = req.cookies['refreshToken'];
+        if (!refreshToken) throw new UnauthorizedException('Недействительный refresh токен');
 
-	// ─── Выход ───────────────────────────────────────────────────
+        const session = await this.prismaService.session.findUnique({
+            where: {refreshToken},
+            include: {user: {select: {id: true, role: true}}},
+        });
 
-	async logout(res: Response, req: Request) {
-		const refreshToken = req.cookies['refreshToken'];
+        // Сессия не найдена или истекла
+        if (!session) throw new UnauthorizedException('Сессия истекла');
 
-		if (refreshToken) {
-			await this.prismaService.session.deleteMany({ where: { refreshToken } });
-		}
+        if (session.expiresAt < new Date()) {
+            await this.prismaService.session.deleteMany({where: {refreshToken}});
+            throw new UnauthorizedException('Сессия истекла');
+        }
 
-		this.setCookie(res, '', new Date(0));
-		return true;
-	}
+        // Ротация — удаляем старую сессию, создаём новую
+        await this.prismaService.session.deleteMany({where: {refreshToken}});
 
-	// ─── Сессии ──────────────────────────────────────────────────
+        return this.auth(res, req, session.user.id, session.user.role);
+    }
 
-	async getSessions(userId: string, req: Request) {
-		const currentRefreshToken = req.cookies['refreshToken'];
+    // ─── Выход ───────────────────────────────────────────────────
 
-		const sessions = await this.prismaService.session.findMany({
-			where: { userId, expiresAt: { gt: new Date() } },
-			orderBy: { createdAt: 'desc' },
-		});
+    async logout(res: Response, req: Request) {
+        const refreshToken = req.cookies['refreshToken'];
 
-		return sessions.map((s) => ({
-			id: s.id,
-			userAgent: s.userAgent,
-			ip: s.ip,
-			createdAt: s.createdAt,
-			expiresAt: s.expiresAt,
-			isCurrent: s.refreshToken === currentRefreshToken,
-		}));
-	}
+        if (refreshToken) {
+            await this.prismaService.session.deleteMany({where: {refreshToken}});
+        }
 
-	async deleteSession(userId: string, sessionId: string) {
-		const session = await this.prismaService.session.findUnique({
-			where: { id: sessionId },
-		});
+        this.setCookie(res, '', new Date(0));
+        return true;
+    }
 
-		if (!session || session.userId !== userId) {
-			throw new NotFoundException('Сессия не найдена');
-		}
+    // ─── Сессии ──────────────────────────────────────────────────
 
-		await this.prismaService.session.delete({ where: { id: sessionId } });
+    async getSessions(userId: string, req: Request) {
+        const currentRefreshToken = req.cookies['refreshToken'];
 
-		// 🔥 отправляем событие
-		await this.sessionService.revokeSession(sessionId);
+        const sessions = await this.prismaService.session.findMany({
+            where: {userId, expiresAt: {gt: new Date()}},
+            orderBy: {createdAt: 'desc'},
+        });
 
-		return true;
-	}
+        return sessions.map((s) => ({
+            id: s.id,
+            userAgent: s.userAgent,
+            ip: s.ip,
+            createdAt: s.createdAt,
+            expiresAt: s.expiresAt,
+            isCurrent: s.refreshToken === currentRefreshToken,
+        }));
+    }
+
+    async deleteSession(userId: string, sessionId: string) {
+        const session = await this.prismaService.session.findUnique({
+            where: {id: sessionId},
+        });
+
+        if (!session || session.userId !== userId) {
+            throw new NotFoundException('Сессия не найдена');
+        }
+
+        await this.prismaService.session.delete({where: {id: sessionId}});
+
+
+        await this.sessionService.revokeSession(sessionId);
+
+        return true;
+    }
 
 // auth.service.ts
-	async deleteAllSessions(userId: string, req: Request) {
-		const currentRefreshToken = req.cookies['refreshToken'];
+    async deleteAllSessions(userId: string, req: Request) {
+        const currentRefreshToken = req.cookies['refreshToken'];
 
-		// Находим ID текущей сессии чтобы не трогать её
-		const currentSession = await this.prismaService.session.findFirst({
-			where: { refreshToken: currentRefreshToken },
-		});
+        // Находим ID текущей сессии чтобы не трогать её
+        const currentSession = await this.prismaService.session.findFirst({
+            where: {refreshToken: currentRefreshToken},
+        });
 
-		// Получаем все сессии кроме текущей
-		const sessionsToDelete = await this.prismaService.session.findMany({
-			where: {
-				userId,
-				id: { not: currentSession?.id },
-			},
-		});
+        // Получаем все сессии кроме текущей
+        const sessionsToDelete = await this.prismaService.session.findMany({
+            where: {
+                userId,
+                id: {not: currentSession?.id},
+            },
+        });
 
-		await this.prismaService.session.deleteMany({
-			where: {
-				userId,
-				refreshToken: { not: currentRefreshToken },
-			},
-		});
+        await this.prismaService.session.deleteMany({
+            where: {
+                userId,
+                refreshToken: {not: currentRefreshToken},
+            },
+        });
 
-		// Шлём revoke только на удалённые сессии — не на текущую
-		for (const session of sessionsToDelete) {
-			await this.sessionService.revokeSession(session.id);
-		}
+        // Шлём revoke только на удалённые сессии — не на текущую
+        for (const session of sessionsToDelete) {
+            await this.sessionService.revokeSession(session.id);
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	async deleteAllSessionsByUser(userId: string) {
-		await this.prismaService.session.deleteMany({
-			where: { userId },
-		});
-		await this.sessionService.revokeAllUserSessions(userId);
-		return true;
-	}
+    async deleteAllSessionsByUser(userId: string) {
+        await this.prismaService.session.deleteMany({
+            where: {userId},
+        });
+        await this.sessionService.revokeAllUserSessions(userId);
+        return true;
+    }
 
-	// ─── Валидация для JWT стратегии ─────────────────────────────
+    // ─── Валидация для JWT стратегии ─────────────────────────────
 
-	async validate(id: string) {
-		const user = await this.prismaService.user.findUnique({ where: { id } });
-		if (!user) throw new NotFoundException('Пользователь не найден');
-		return user;
-	}
+    async validate(id: string) {
+        const user = await this.prismaService.user.findUnique({where: {id}});
+        if (!user) throw new NotFoundException('Пользователь не найден');
+        return user;
+    }
 
-	// ─── Приватные методы ────────────────────────────────────────
+    // ─── Приватные методы ────────────────────────────────────────
 
-	private async auth(res: Response, req: Request, id: string, role: Role) {
+    private async auth(res: Response, req: Request, id: string, role: Role) {
 
-		const user = await this.prismaService.user.findUnique({ where: { id } });
-		if (!user) throw new NotFoundException('Пользователь не найден');
+        const user = await this.prismaService.user.findUnique({where: {id}});
+        if (!user) throw new NotFoundException('Пользователь не найден');
 
-		const refreshTTLMs = refreshConvertToMs(this.configService);
-		const expiresAt = new Date(Date.now() + refreshTTLMs);
+        const refreshTTLMs = refreshConvertToMs(this.configService);
+        const expiresAt = new Date(Date.now() + refreshTTLMs);
 
-		const ua = new UAParser(req.headers['user-agent'] ?? '').getResult();
-		const userAgent = `${ua.browser.name ?? 'Unknown'} ${ua.browser.version ?? ''} / ${ua.os.name ?? 'Unknown'}`;
-		const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+        const ua = new UAParser(req.headers['user-agent'] ?? '').getResult();
+        const userAgent = `${ua.browser.name ?? 'Unknown'} ${ua.browser.version ?? ''} / ${ua.os.name ?? 'Unknown'}`;
+        const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
-		// ✅ 1. создаём session СНАЧАЛА
-		const session = await this.prismaService.session.create({
-			data:{
-				refreshToken: 'temp', // временно
-				userAgent,
-				ip,
-				expiresAt,
-				userId: id,
-			}
-		})
+        // ✅ 1. создаём session СНАЧАЛА
+        const session = await this.prismaService.session.create({
+            data: {
+                refreshToken: 'temp', // временно
+                userAgent,
+                ip,
+                expiresAt,
+                userId: id,
+            }
+        })
 
-		// ✅ 2. генерируем токены с sessionId
-		const { accessToken, refreshToken } = this.generateTokens(id, role, session.id);
+        // ✅ 2. генерируем токены с sessionId
+        const {accessToken, refreshToken} = this.generateTokens(id, role, session.id);
 
-		// ✅ 3. обновляем refreshToken в сессии
-		await this.prismaService.session.update({
-			where: { id: session.id },
-			data: { refreshToken },
-		});
+        // ✅ 3. обновляем refreshToken в сессии
+        await this.prismaService.session.update({
+            where: {id: session.id},
+            data: {refreshToken},
+        });
 
-		this.setCookie(res, refreshToken, expiresAt);
+        this.setCookie(res, refreshToken, expiresAt);
 
-		return { accessToken, user };
-	}
+        return {accessToken, user, totpEnabled: user.totpEnabled};
+    }
 
-	private generateTokens(id: string, role: Role, sessionId: string) {
-		const privateKey = fs.readFileSync(
-			path.resolve(this.configService.getOrThrow('PRIVATE_KEY_PATH')),
-			'utf8'
-		);
+    private generateTokens(id: string, role: Role, sessionId: string) {
+        const privateKey = fs.readFileSync(
+            path.resolve(this.configService.getOrThrow('PRIVATE_KEY_PATH')),
+            'utf8'
+        );
 
-		const payload: JwtPayload = { id, role, sessionId };
+        const payload: JwtPayload = {id, role, sessionId};
 
-		const accessToken = this.jwtService.sign(payload, {
-			privateKey,
-			algorithm: 'ES256',
-			expiresIn: this.JWT_ACCESS_TOKEN_TTL,
-		});
+        const accessToken = this.jwtService.sign(payload, {
+            privateKey,
+            algorithm: 'ES256',
+            expiresIn: this.JWT_ACCESS_TOKEN_TTL,
+        });
 
-		const refreshToken = this.jwtService.sign(payload, {
-			privateKey,
-			algorithm: 'ES256',
-			expiresIn: this.JWT_REFRESH_TOKEN_TTL,
-		});
+        const refreshToken = this.jwtService.sign(payload, {
+            privateKey,
+            algorithm: 'ES256',
+            expiresIn: this.JWT_REFRESH_TOKEN_TTL,
+        });
 
-		return { accessToken, refreshToken };
-	}
+        return {accessToken, refreshToken};
+    }
 
-	private setCookie(res: Response, value: string, expires: Date) {
-		res.cookie('refreshToken', value, {
-			httpOnly: true,
-			domain: this.COOKIE_DOMAIN,
-			expires,
-			secure: !isDev(this.configService),
-			sameSite: !isDev(this.configService) ? 'none' : 'lax',
-		});
-	}
+    private setCookie(res: Response, value: string, expires: Date) {
+        res.cookie('refreshToken', value, {
+            httpOnly: true,
+            domain: this.COOKIE_DOMAIN,
+            expires,
+            secure: !isDev(this.configService),
+            sameSite: !isDev(this.configService) ? 'none' : 'lax',
+        });
+    }
 }

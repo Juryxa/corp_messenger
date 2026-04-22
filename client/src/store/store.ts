@@ -21,10 +21,20 @@ export default class Store {
     tempToken: string | null = null;
     requireTotpSetup = false;
     needsKeyRestore = false;
+    password = '';
 
     setNeedsKeyRestore(bool: boolean) {
         this.needsKeyRestore = bool;
     }
+
+    setPasswordTemp(password: string) {
+        this.password = password;
+    }
+
+    getPasswordTemp() {
+        return this.password;
+    }
+
     markKeysAsLoaded() {
         this.needsKeyRestore = false;
     }
@@ -151,6 +161,7 @@ export default class Store {
             localStorage.clear();
             sessionStorage.clear();
             await AuthService.logout();
+            this.password = '';
             this.setAuth(false);
             this.setUser({} as IUser);
             disconnectSessionSocket();

@@ -47,6 +47,7 @@ export function LoginPage() {
         }
 
         if (store.isAwaitingTotp) {
+            store.setPasswordTemp(password);
             return;
         }
     }

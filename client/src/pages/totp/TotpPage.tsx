@@ -45,7 +45,7 @@ export function TotpPage() {
 
                 const privateKey = await decryptPrivateKey(
                     keysRes.data.encryptedPrivateKey,
-                    password,
+                    store.getPasswordTemp(),
                     saltRes.data.cryptoSalt,
                 );
 

@@ -341,8 +341,7 @@ export class AuthService {
     // ─── Приватные методы ────────────────────────────────────────
 
     private async auth(res: Response, req: Request, id: string, role: Role) {
-
-        const user = await this.prismaService.user.findUnique({where: {id}});
+        const user = await this.prismaService.user.findUnique({ where: { id } });
         if (!user) throw new NotFoundException('Пользователь не найден');
 
         const refreshTTLMs = refreshConvertToMs(this.configService);
@@ -352,29 +351,36 @@ export class AuthService {
         const userAgent = `${ua.browser.name ?? 'Unknown'} ${ua.browser.version ?? ''} / ${ua.os.name ?? 'Unknown'}`;
         const ip = req.ip ?? req.socket.remoteAddress ?? 'unknown';
 
-        // ✅ 1. создаём session СНАЧАЛА
+        // 1. Генерируем временный уникальный ID для сессии
+        const tempSessionId = randomBytes(16).toString('hex');
+
+        // 2. Генерируем токены с временным sessionId
+        const { accessToken, refreshToken } = this.generateTokens(id, role, tempSessionId);
+
+        // 3. Создаём сессию сразу с правильным refreshToken — без 'temp'
         const session = await this.prismaService.session.create({
             data: {
-                refreshToken: 'temp', // временно
+                refreshToken,  // ← сразу реальный токен
                 userAgent,
                 ip,
                 expiresAt,
                 userId: id,
-            }
-        })
-
-        // ✅ 2. генерируем токены с sessionId
-        const {accessToken, refreshToken} = this.generateTokens(id, role, session.id);
-
-        // ✅ 3. обновляем refreshToken в сессии
-        await this.prismaService.session.update({
-            where: {id: session.id},
-            data: {refreshToken},
+            },
         });
 
-        this.setCookie(res, refreshToken, expiresAt);
+        // 4. Перегенерируем токены с реальным sessionId из БД
+        const { accessToken: finalAccessToken, refreshToken: finalRefreshToken } =
+            this.generateTokens(id, role, session.id);
 
-        return {accessToken, user, totpEnabled: user.totpEnabled};
+        // 5. Обновляем refreshToken в сессии (он теперь содержит реальный sessionId)
+        await this.prismaService.session.update({
+            where: { id: session.id },
+            data: { refreshToken: finalRefreshToken },
+        });
+
+        this.setCookie(res, finalRefreshToken, expiresAt);
+
+        return { accessToken: finalAccessToken, user };
     }
 
     private generateTokens(id: string, role: Role, sessionId: string) {

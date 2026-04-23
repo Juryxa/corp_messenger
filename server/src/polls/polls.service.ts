@@ -1,13 +1,21 @@
-import {BadRequestException, ForbiddenException, Injectable, NotFoundException,} from '@nestjs/common';
+import {BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException,} from '@nestjs/common';
 import {PrismaService} from '../prisma/prisma.service';
 import {CreatePollDto} from './dto/create-poll.dto';
 import {VotePollDto} from './dto/vote-poll.dto';
+import {Cache, CACHE_MANAGER} from "@nestjs/cache-manager";
 
 @Injectable()
 export class PollsService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService,
+                @Inject(CACHE_MANAGER) private readonly cache: Cache) {}
 
     async getPolls(userId: string, filter: 'active' | 'finished' | 'all') {
+        const cacheKey = `polls:${filter}`;
+        const cached = await this.cache.get(cacheKey);
+        if (cached) {
+            // Персонализируем hasVoted на клиенте — данные из кэша без него
+            return this.personalizePolls(cached as any[], userId);
+        }
         const now = new Date();
 
         const where =
@@ -27,11 +35,15 @@ export class PollsService {
             orderBy: { createdAt: 'desc' },
         });
 
-        return polls.map((poll) => ({
-            ...poll,
-            totalVoters: new Set(poll.votes.map((v) => v.userId)).size,
-            hasVoted: poll.votes.some((v) => v.userId === userId),
-            votes: undefined, // скрываем сырые голоса
+        await this.cache.set(cacheKey, polls, 60);
+        return this.personalizePolls(polls, userId);
+    }
+
+    private personalizePolls(polls: any[], userId: string) {
+        return polls.map(p => ({
+            ...p,
+            hasVoted: p.votes?.some((v: any) => v.userId === userId) ?? false,
+            votes: undefined,
         }));
     }
 

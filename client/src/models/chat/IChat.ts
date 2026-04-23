@@ -7,7 +7,9 @@ export interface IChat {
     id: string;
     type: 'direct' | 'group' | 'channel';
     name?: string;
+    description?: string;
+    createdAt: string;
     members: IChatMember[];
-    messages?: IMessage[];
+    messages?: IMessage[]; // ← IMessage уже содержит groupKeys, encryptedKeySender и т.д.
 }
 

@@ -23,6 +23,14 @@ export default class ChatService {
         return $api.get<ChatMessagesResponse>(`${API_CHAT_SERVICE}/${chatId}/messages`, { params });
     }
 
+    static async getUnreadCounts(): Promise<AxiosResponse<Record<string, number>>> {
+        return $api.get(`${API_CHAT_SERVICE}/unread`);
+    }
+
+    static async markAsRead(chatId: string): Promise<AxiosResponse<void>> {
+        return $api.post(`${API_CHAT_SERVICE}/${chatId}/read`);
+    }
+
     static async addMember(chatId: string, dto: AddChatMemberRequest): Promise<AxiosResponse<IChatMember>> {
         return $api.post<IChatMember>(`${API_CHAT_SERVICE}/${chatId}/members`, dto);
     }

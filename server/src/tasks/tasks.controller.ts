@@ -4,7 +4,7 @@ import {CreateTaskDto} from './dto/create-task.dto';
 import {UpdateTaskStatusDto} from './dto/update-task.dto';
 import {ApiBearerAuth, ApiOperation, ApiTags} from '@nestjs/swagger';
 import {CurrentUser} from '../users/decorators/current-user.decorator';
-import {Authorization} from '../auth/decorators/authorization.decorator';
+import {Authorization} from "../auth/decorators/authorization.decorator";
 
 @ApiTags('Tasks')
 @ApiBearerAuth()
@@ -13,7 +13,7 @@ import {Authorization} from '../auth/decorators/authorization.decorator';
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
-  @ApiOperation({ summary: 'Получить задачи' })
+  @ApiOperation({summary: 'Получить задачи'})
   @Get()
   getTasks(
       @CurrentUser() user: { id: string },

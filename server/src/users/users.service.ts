@@ -1,59 +1,67 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
+import {Inject, Injectable, NotFoundException} from '@nestjs/common';
 import {PrismaService} from '../prisma/prisma.service';
 import {SaveKeysDto} from './dto/save-keys.dto';
+import {Cache, CACHE_MANAGER} from "@nestjs/cache-manager";
 
 @Injectable()
 export class UsersService {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        @Inject(CACHE_MANAGER) private readonly cache: Cache) {}
 
     async saveKeys(userId: string, dto: SaveKeysDto) {
         return this.prisma.user.update({
-            where: { id: userId },
+            where: {id: userId},
             data: {
                 publicKey: dto.publicKey,
                 encryptedPrivateKey: dto.encryptedPrivateKey,
                 cryptoSalt: dto.cryptoSalt,
             },
-            select: { id: true },
+            select: {id: true},
         });
     }
+
     async getPublicKey(userId: string) {
+        const cacheKey = `pubkey:${userId}`;
+        const cached = await this.cache.get<{ publicKey: string }>(cacheKey);
+        if (cached) return cached;
+
         const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { publicKey: true },
+            where: {id: userId},
+            select: {publicKey: true},
         });
+        if (!user?.publicKey) throw new NotFoundException('Ключ не найден');
 
-        if (!user) throw new NotFoundException('Пользователь не найден');
-        if (!user.publicKey) throw new NotFoundException('Ключ не найден');
-
-        return { publicKey: user.publicKey };
+        const result = {publicKey: user.publicKey};
+        await this.cache.set(cacheKey, result, 3600); // 1 час
+        return result;
     }
 
     async getEncryptedPrivateKey(userId: string) {
         const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { encryptedPrivateKey: true },
+            where: {id: userId},
+            select: {encryptedPrivateKey: true},
         });
 
         if (!user) throw new NotFoundException('Пользователь не найден');
         if (!user.encryptedPrivateKey) throw new NotFoundException('Ключ не найден');
 
-        return { encryptedPrivateKey: user.encryptedPrivateKey };
+        return {encryptedPrivateKey: user.encryptedPrivateKey};
     }
 
     async getCryptoSalt(userId: string) {
         const user = await this.prisma.user.findUnique({
-            where: { id: userId },
-            select: { cryptoSalt: true },
+            where: {id: userId},
+            select: {cryptoSalt: true},
         });
 
         if (!user?.cryptoSalt) throw new NotFoundException('Соль не найдена');
-        return { cryptoSalt: user.cryptoSalt };
+        return {cryptoSalt: user.cryptoSalt};
     }
 
     async getUser(userId: string) {
         const user = await this.prisma.user.findUnique({
-            where: { id: userId },
+            where: {id: userId},
             select: {
                 id: true,
                 name: true,
@@ -73,9 +81,9 @@ export class UsersService {
         return this.prisma.user.findMany({
             where: {
                 OR: [
-                    { name: { contains: query, mode: 'insensitive' } },
-                    { surname: { contains: query, mode: 'insensitive' } },
-                    { email: { contains: query, mode: 'insensitive' } },
+                    {name: {contains: query, mode: 'insensitive'}},
+                    {surname: {contains: query, mode: 'insensitive'}},
+                    {email: {contains: query, mode: 'insensitive'}},
                 ],
             },
             select: {
@@ -93,7 +101,7 @@ export class UsersService {
         const chats = await this.prisma.chat.findMany({
             where: {
                 type: 'direct',
-                members: { some: { userId } },
+                members: {some: {userId}},
             },
             include: {
                 members: {
@@ -123,8 +131,8 @@ export class UsersService {
         const user = await this.prisma.user.findFirst({
             where: {
                 OR: [
-                    ...(params.email ? [{ email: params.email }] : []),
-                    ...(typeof params.employeeId === 'number' ? [{ employee_Id: params.employeeId }] : []),
+                    ...(params.email ? [{email: params.email}] : []),
+                    ...(typeof params.employeeId === 'number' ? [{employee_Id: params.employeeId}] : []),
                 ],
             },
             select: {
@@ -144,8 +152,8 @@ export class UsersService {
 
     async setRole(userId: string, role: 'admin' | 'user') {
         const user = await this.prisma.user.update({
-            where: { id: userId },
-            data: { role },
+            where: {id: userId},
+            data: {role},
             select: {
                 id: true,
                 name: true,

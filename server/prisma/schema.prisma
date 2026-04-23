@@ -32,6 +32,7 @@ model User {
   sessions Session[]
   chatMembers      ChatMember[]
   messages         Message[]
+  messageReads MessageRead[]
   createdPolls Poll[]
   pollVotes    PollVote[]
   tasks Task[]
@@ -89,9 +90,9 @@ model Message {
   encryptedKeySender    String?
   senderPublicKey       String?
   groupKeys             MessageGroupKey[]
+  readBy                MessageRead[]     // ← вместо isRead
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
-  isRead                Boolean  @default(false)
 
   chatId   String
   chat     Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
@@ -99,6 +100,20 @@ model Message {
   sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@map("messages")
+}
+
+model MessageRead {
+  id        String   @id @default(uuid(4))
+  readAt    DateTime @default(now())
+
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
 }
 
 model MessageGroupKey {

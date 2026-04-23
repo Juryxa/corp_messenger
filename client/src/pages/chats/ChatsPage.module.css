@@ -162,13 +162,159 @@
     min-width: 0;
 }
 
-.chatTop {
+.chatTop, .chatBottom {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     margin-bottom: 3px;
 }
+
+
+/* ─── Chat list bottom row ────────────────────────────────────── */
+
+.chatBottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    min-width: 0;
+}
+
+.chatPreview {
+    font-size: 12.5px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+}
+
+.chatPreviewDraft {
+    color: #f97316; /* оранжевый для черновиков */
+    font-style: italic;
+}
+
+/* ─── Unread badge ────────────────────────────────────────────── */
+
+.unreadBadge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* ─── Scroll to bottom button ─────────────────────────────────── */
+
+.scrollToBottomBtn {
+    position: absolute;
+    bottom: 80px;
+    right: 20px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-bg-main);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    transition: all 0.15s;
+    z-index: 10;
+}
+
+.scrollToBottomBtn:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-1px);
+}
+
+.scrollToBottomBtn svg { width: 18px; height: 18px; }
+
+.scrollBadge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--color-danger);
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ─── Loading more ────────────────────────────────────────────── */
+
+.loadingMore {
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+}
+
+.loadingSpinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(79,142,247,0.2);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loadMoreBtn {
+    display: block;
+    width: 100%;
+    padding: 8px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-primary);
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+    transition: background 0.12s;
+    text-align: center;
+}
+
+.loadMoreBtn:hover { background: var(--color-bg-hover); }
+
+/* ─── Draft indicator ─────────────────────────────────────────── */
+
+.inputArea {
+    position: relative; /* уже должно быть */
+}
+
+.draftIndicator {
+    position: absolute;
+    top: -22px;
+    left: 16px;
+    font-size: 11px;
+    color: #f97316;
+    font-style: italic;
+    pointer-events: none;
+}
+
+/* ─── Dialog — position relative для кнопки скролла ──────────── */
+/* Убедись что .dialog имеет position: relative */
+
 
 .chatName {
     font-family: 'DM Sans', sans-serif;
@@ -211,6 +357,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    position: relative;
     overflow: hidden;
 }
 
@@ -335,6 +482,27 @@
     font-size: 10px;
     color: #3a4455;
     align-self: flex-end;
+}
+.messageMeta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    align-self: flex-end;
+}
+
+.readStatus {
+    display: flex;
+    align-items: center;
+    color: #3a4455; /* серый — отправлено */
+}
+
+.readStatus svg {
+    width: 14px;
+    height: 14px;
+}
+
+.readStatusRead {
+    color: #4f8ef7; /* синий — прочитано */
 }
 
 /* ─── Typing indicator ────────────────────────────────────────── */

@@ -5,6 +5,10 @@ export interface IMessageGroupKey {
     messageId?: string;
 }
 
+export interface IMessageRead {
+    userId: string;
+}
+
 export interface IMessage {
     id: string;
     encryptedText: string;
@@ -12,6 +16,7 @@ export interface IMessage {
     encryptedKeySender?: string;
     senderPublicKey?: string;
     groupKeys?: IMessageGroupKey[];
+    readBy?: IMessageRead[];
     text: string;
     chatId: string;
     createdAt: string;
